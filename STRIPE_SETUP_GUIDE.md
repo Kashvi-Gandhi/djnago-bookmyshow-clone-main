@@ -118,33 +118,6 @@ Once configured, use these Stripe test card numbers:
 
 ---
 
-## Environment File Example (.env)
-
-Create a `.env` file in your project root:
-
-```env
-# Stripe Payment Gateway
-STRIPE_PUBLIC_KEY=pk_test_51234567890abcdefghijklmnopqrstuvwxyz
-STRIPE_SECRET_KEY=sk_test_abcdefghijklmnopqrstuvwxyz1234567890
-STRIPE_WEBHOOK_SECRET=whsec_1234567890abcdefghijklmnopqrstuvwxyz
-
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-
-# Database
-DATABASE_URL=sqlite:///db.sqlite3
-
-# Security
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-```
-
-Then load it in your Django app or settings.
-
----
 
 ## Payment Flow Diagram
 

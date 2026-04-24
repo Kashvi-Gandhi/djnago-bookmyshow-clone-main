@@ -307,3 +307,139 @@ class EmailQueue(models.Model):
 
     def __str__(self) -> str:
         return f"Email to {self.to_email} [{self.status}]"
+
+
+class AdminUser(models.Model):
+    """Admin users with role-based access control"""
+    
+    ROLE_CHOICES = [
+        ("superadmin", "Super Admin"),
+        ("analytics_admin", "Analytics Admin"),
+        ("support_admin", "Support Admin"),
+        ("finance_admin", "Finance Admin"),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="admin_profile")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="analytics_admin")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login_at = models.DateTimeField(null=True, blank=True)
+    last_password_change = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=["role", "is_active"]),
+            models.Index(fields=["user", "is_active"]),
+        ]
+    
+    def __str__(self) -> str:
+        return f"{self.user.username} ({self.role})"
+    
+    @property
+    def is_superadmin(self):
+        return self.role == "superadmin" and self.is_active
+    
+    @property
+    def can_access_analytics(self):
+        return self.is_active and self.role in ("superadmin", "analytics_admin")
+    
+    @property
+    def can_access_finance(self):
+        return self.is_active and self.role in ("superadmin", "finance_admin")
+    
+    def update_last_login(self):
+        self.last_login_at = timezone.now()
+        self.save(update_fields=['last_login_at'])
+
+
+class AdminActivityLog(models.Model):
+    """Audit log for admin actions"""
+    
+    ACTION_CHOICES = [
+        ("view_dashboard", "Viewed Dashboard"),
+        ("export_report", "Exported Report"),
+        ("download_data", "Downloaded Data"),
+        ("user_login", "User Login"),
+        ("settings_change", "Settings Changed"),
+    ]
+    
+    admin_user = models.ForeignKey(AdminUser, on_delete=models.CASCADE, related_name="activity_logs")
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    description = models.TextField(blank=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.CharField(max_length=500, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=["admin_user", "timestamp"]),
+            models.Index(fields=["action", "timestamp"]),
+            models.Index(fields=["timestamp"]),
+        ]
+        ordering = ["-timestamp"]
+    
+    def __str__(self) -> str:
+        return f"{self.admin_user.user.username} - {self.action} - {self.timestamp}"
+
+
+class AnalyticsCache(models.Model):
+    """Cache for analytics query results to prevent repeated expensive queries"""
+    
+    CACHE_KEYS = [
+        ("daily_revenue", "Daily Revenue"),
+        ("weekly_revenue", "Weekly Revenue"),
+        ("monthly_revenue", "Monthly Revenue"),
+        ("popular_movies", "Popular Movies"),
+        ("busy_theaters", "Busy Theaters"),
+        ("peak_hours", "Peak Hours"),
+        ("cancellation_rate", "Cancellation Rate"),
+    ]
+    
+    cache_key = models.CharField(max_length=100, unique=True, db_index=True)
+    cache_label = models.CharField(max_length=100, choices=CACHE_KEYS, default="daily_revenue")
+    data = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=["expires_at"]),
+            models.Index(fields=["cache_key", "expires_at"]),
+        ]
+    
+    def __str__(self) -> str:
+        return f"{self.cache_label} (expires: {self.expires_at})"
+    
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+    
+    @classmethod
+    def get_or_none(cls, cache_key):
+        """Get cache if it exists and hasn't expired"""
+        try:
+            cache_obj = cls.objects.get(cache_key=cache_key)
+            if not cache_obj.is_expired:
+                return cache_obj.data
+        except cls.DoesNotExist:
+            pass
+        return None
+    
+    @classmethod
+    def set_cache(cls, cache_key, data, cache_label, ttl_minutes=30):
+        """Store cache data with TTL"""
+        expires_at = timezone.now() + timedelta(minutes=ttl_minutes)
+        obj, created = cls.objects.get_or_create(
+            cache_key=cache_key,
+            defaults={
+                'data': data,
+                'cache_label': cache_label,
+                'expires_at': expires_at,
+            }
+        )
+        if not created:
+            obj.data = data
+            obj.expires_at = expires_at
+            obj.save(update_fields=['data', 'expires_at'])
+        return obj
+
