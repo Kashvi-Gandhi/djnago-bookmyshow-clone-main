@@ -1,0 +1,475 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">{{ title }}</h1>
+        </div>
+    </div>
+
+    <!-- Revenue Charts -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Revenue Analytics</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadRevenueData('daily')">Daily</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadRevenueData('weekly')">Weekly</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadRevenueData('monthly')">Monthly</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Movies and Experiences -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Most Popular Movies</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="moviesChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Most Popular Experiences</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="experiencesChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Occupancy Rates -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Theater Occupancy Rates</h5>
+                </div>
+                <div class="card-body">
+                    <div id="theaterOccupancy" class="list-group">
+                        <!-- Data will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Venue Occupancy Rates</h5>
+                </div>
+                <div class="card-body">
+                    <div id="venueOccupancy" class="list-group">
+                        <!-- Data will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Patterns -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Peak Booking Hours</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="bookingHoursChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Cancellation Rate</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <h2 id="cancellationRate" class="text-danger">--</h2>
+                        <p class="text-muted">Overall Cancellation Rate</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache Management -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Cache Management</h5>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-warning" onclick="invalidateCache()">
+                        <i class="fas fa-sync-alt"></i> Invalidate Cache
+                    </button>
+                    <small class="text-muted ml-2">Clear cached analytics data to refresh with latest information</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Global chart variables
+let revenueChart, moviesChart, experiencesChart, bookingHoursChart;
+
+// Small utility: color palettes
+function colorPalette(index) {
+    const palette = [
+        'rgba(54, 162, 235, 0.9)',
+        'rgba(255, 99, 132, 0.9)',
+        'rgba(255, 205, 86, 0.9)',
+        'rgba(75, 192, 192, 0.9)',
+        'rgba(153, 102, 255, 0.9)',
+        'rgba(255, 159, 64, 0.9)'
+    ];
+    return palette[index % palette.length];
+}
+
+function gradientFill(ctx, color) {
+    const g = ctx.createLinearGradient(0, 0, 0, 300);
+    g.addColorStop(0, color.replace('0.9', '0.25'));
+    g.addColorStop(1, color.replace('0.9', '0.06'));
+    return g;
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadAllData();
+});
+
+function initializeCharts() {
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Revenue (₹)',
+                data: [],
+                borderColor: colorPalette(3),
+                backgroundColor: gradientFill(revenueCtx, colorPalette(3)),
+                tension: 0.25,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                tooltip: { enabled: true, mode: 'index', intersect: false },
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: { grid: { display: false } }
+            },
+            animation: { duration: 800 }
+        }
+    });
+
+    // Movies Chart
+    const moviesCtx = document.getElementById('moviesChart').getContext('2d');
+    moviesChart = new Chart(moviesCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Bookings',
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 0,
+                borderRadius: 8,
+                maxBarThickness: 48
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            },
+            animation: { duration: 700 }
+        }
+    });
+
+    // Experiences Chart
+    const experiencesCtx = document.getElementById('experiencesChart').getContext('2d');
+    experiencesChart = new Chart(experiencesCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Bookings',
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 0,
+                borderRadius: 8,
+                maxBarThickness: 48
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            },
+            animation: { duration: 700 }
+        }
+    });
+
+    // Booking Hours Chart
+    const bookingHoursCtx = document.getElementById('bookingHoursChart').getContext('2d');
+    bookingHoursChart = new Chart(bookingHoursCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Bookings',
+                data: [],
+                backgroundColor: [],
+                borderColor: [],
+                borderWidth: 0,
+                borderRadius: 6,
+                maxBarThickness: 36
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: { enabled: true } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function loadAllData() {
+    loadRevenueData('daily');
+    loadPopularMovies();
+    loadPopularExperiences();
+    loadTheaterOccupancy();
+    loadVenueOccupancy();
+    loadBookingHours();
+    loadCancellationRate();
+}
+
+function loadRevenueData(period) {
+    fetch(`/analytics/api/revenue/?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.data.map(item => {
+                if (period === 'daily') {
+                    return new Date(item[0]).toLocaleDateString();
+                } else if (period === 'weekly') {
+                    return `Week of ${new Date(item[0]).toLocaleDateString()}`;
+                } else {
+                    return new Date(item[0]).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                }
+            });
+            const values = data.data.map(item => item[1]);
+
+            revenueChart.data.labels = labels;
+            revenueChart.data.datasets[0].data = values;
+            revenueChart.update();
+        })
+        .catch(error => console.error('Error loading revenue data:', error));
+}
+
+function loadPopularMovies() {
+    fetch('/analytics/api/popular-movies/')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.data.map(item => item.movie__name);
+            const values = data.data.map(item => item.booking_count);
+            const bg = values.map((_, i) => gradientFill(moviesChart.ctx, colorPalette(i)));
+            const bc = values.map((_, i) => colorPalette(i));
+
+            moviesChart.data.labels = labels;
+            moviesChart.data.datasets[0].data = values;
+            moviesChart.data.datasets[0].backgroundColor = bg;
+            moviesChart.data.datasets[0].borderColor = bc;
+            moviesChart.update();
+        })
+        .catch(error => console.error('Error loading popular movies:', error));
+}
+
+function loadPopularExperiences() {
+    fetch('/analytics/api/popular-experiences/')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.data.map(item => item.experience__name);
+            const values = data.data.map(item => item.booking_count);
+            const bg = values.map((_, i) => gradientFill(experiencesChart.ctx, colorPalette(i+1)));
+            const bc = values.map((_, i) => colorPalette(i+1));
+
+            experiencesChart.data.labels = labels;
+            experiencesChart.data.datasets[0].data = values;
+            experiencesChart.data.datasets[0].backgroundColor = bg;
+            experiencesChart.data.datasets[0].borderColor = bc;
+            experiencesChart.update();
+        })
+        .catch(error => console.error('Error loading popular experiences:', error));
+}
+
+function loadTheaterOccupancy() {
+    fetch('/analytics/api/theater-occupancy/')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('theaterOccupancy');
+            container.innerHTML = '';
+            data.data.slice(0, 10).forEach(item => {
+                const rate = (Number(item.occupancy_rate) || 0).toFixed(1);
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+                itemElement.innerHTML = `
+                    <div>
+                        <strong>${item.theater_name}</strong><br>
+                        <small class="text-muted">${item.movie_name}</small>
+                    </div>
+                    <span class="badge badge-primary badge-pill">${rate}%</span>
+                `;
+                container.appendChild(itemElement);
+            });
+        })
+        .catch(error => console.error('Error loading theater occupancy:', error));
+}
+
+function loadVenueOccupancy() {
+    fetch('/analytics/api/venue-occupancy/')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('venueOccupancy');
+            container.innerHTML = '';
+            data.data.slice(0, 10).forEach(item => {
+                const rate = (Number(item.occupancy_rate) || 0).toFixed(1);
+                const itemElement = document.createElement('div');
+                itemElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+                itemElement.innerHTML = `
+                    <div>
+                        <strong>${item.venue_name}</strong><br>
+                        <small class="text-muted">${item.experience_name}</small>
+                    </div>
+                    <span class="badge badge-success badge-pill">${rate}%</span>
+                `;
+                container.appendChild(itemElement);
+            });
+        })
+        .catch(error => console.error('Error loading venue occupancy:', error));
+}
+
+function loadBookingHours() {
+    fetch('/analytics/api/booking-hours/')
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.data.map(item => `${item[0]}:00`);
+            const values = data.data.map(item => item[1]);
+            const bg = values.map((_, i) => gradientFill(bookingHoursChart.ctx, colorPalette(i+2)));
+            const bc = values.map((_, i) => colorPalette(i+2));
+
+            bookingHoursChart.data.labels = labels;
+            bookingHoursChart.data.datasets[0].data = values;
+            bookingHoursChart.data.datasets[0].backgroundColor = bg;
+            bookingHoursChart.data.datasets[0].borderColor = bc;
+            bookingHoursChart.update();
+        })
+        .catch(error => console.error('Error loading booking hours:', error));
+}
+
+function loadCancellationRate() {
+    fetch('/analytics/api/cancellation-rate/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cancellationRate').textContent = `${data.data}%`;
+        })
+        .catch(error => console.error('Error loading cancellation rate:', error));
+}
+
+function invalidateCache() {
+    fetch('/analytics/invalidate-cache/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Cache invalidated successfully!');
+        loadAllData(); // Reload all data
+    })
+    .catch(error => console.error('Error invalidating cache:', error));
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    margin-bottom: 1rem;
+}
+
+.card .card-header { background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(0,0,0,0.03)); }
+.card .card-body { background: #ffffff; }
+
+.badge-pill { padding: 0.5rem 0.75rem; font-weight:600; }
+.list-group-item { display:flex; align-items:center; justify-content:space-between; }
+.chart-container { padding: 1rem; }
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.btn-group .btn {
+    margin-right: 0.25rem;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+.list-group-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}

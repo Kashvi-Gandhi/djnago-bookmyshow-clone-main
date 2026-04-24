@@ -11,6 +11,7 @@ urlpatterns = [
     path('',include('users.urls')),
     path('movies/', include('movies.urls')),
     path('experiences/', include('experiences.urls')),
+    path('analytics/', include('analytics.urls')),
     # Convenience routes to match BookMyShow-style sections
     path('events/', experience_views.experience_list, {"type_slug": "event"}, name="events"),
     path('premieres/', experience_views.experience_list, {"type_slug": "premiere"}, name="premieres"),

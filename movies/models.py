@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from datetime import timedelta
 from django.core.exceptions import ValidationError
 from urllib.parse import urlparse, parse_qs
 import uuid
@@ -241,6 +242,15 @@ class Booking(models.Model):
             f"Booking by {self.user.username} for "
             f"{self.seat.seat_number} at {self.theater.name} ({self.status})"
         )
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['booked_at']),
+            models.Index(fields=['movie']),
+            models.Index(fields=['theater']),
+            models.Index(fields=['user']),
+        ]
 
 
 class Payment(models.Model):
@@ -263,6 +273,13 @@ class Payment(models.Model):
 
     def __str__(self) -> str:
         return f"Payment {self.stripe_payment_intent_id} - {self.status}"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
+            models.Index(fields=['stripe_payment_intent_id']),
+        ]
 
 
 class PaymentAttempt(models.Model):
@@ -390,8 +407,10 @@ class AnalyticsCache(models.Model):
         ("weekly_revenue", "Weekly Revenue"),
         ("monthly_revenue", "Monthly Revenue"),
         ("popular_movies", "Popular Movies"),
-        ("busy_theaters", "Busy Theaters"),
-        ("peak_hours", "Peak Hours"),
+        ("theater_occupancy", "Theater Occupancy"),
+        ("popular_experiences", "Popular Experiences"),
+        ("venue_occupancy", "Venue Occupancy"),
+        ("peak_booking_hours", "Peak Booking Hours"),
         ("cancellation_rate", "Cancellation Rate"),
     ]
     
@@ -442,4 +461,3 @@ class AnalyticsCache(models.Model):
             obj.expires_at = expires_at
             obj.save(update_fields=['data', 'expires_at'])
         return obj
-
