@@ -1,0 +1,15 @@
+<html>
+  <body>
+    <p>Hi {{ user.username }},</p>
+    <p><strong>Your booking is confirmed!</strong></p>
+    <ul>
+      <li><strong>Experience:</strong> {{ experience.name }} ({{ experience.type }})</li>
+      <li><strong>Venue:</strong> {{ venue.name }}{% if venue.city %}, {{ venue.city }}{% endif %}</li>
+      <li><strong>Start:</strong> {{ start_time }}</li>
+      <li><strong>Seats:</strong> {% for s in seats %}{{ s }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+      <li><strong>Payment ID:</strong> {{ payment_ids.0 }}</li>
+    </ul>
+    <p>Thanks,<br/>BookMySeat</p>
+  </body>
+</html>
+

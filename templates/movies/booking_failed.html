@@ -1,0 +1,137 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+<style>
+.failed-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.failed-icon {
+  font-size: 4rem;
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.booking-details {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  margin: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  color: white;
+  text-decoration: none;
+}
+
+.btn-retry {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  margin: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.btn-retry:hover {
+  transform: translateY(-2px);
+  color: white;
+  text-decoration: none;
+}
+
+.error-notice {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #721c24;
+}
+</style>
+
+<div class="container">
+  <div class="failed-container">
+    <div class="failed-icon">
+      <i class="fas fa-times-circle"></i>
+    </div>
+
+    <h2>Payment Failed</h2>
+    <p>Unfortunately, your payment could not be processed.</p>
+
+    <div class="booking-details">
+      <h4>Booking Details</h4>
+      <div class="detail-row">
+        <span>Movie:</span>
+        <span>{{ booking.movie.name }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Theater:</span>
+        <span>{{ booking.theater.name }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Show Time:</span>
+        <span>{{ booking.theater.time|date:"M d, Y g:i A" }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Seats:</span>
+        <span>{% for b in related_bookings %}{{ b.seat.seat_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+      </div>
+      <div class="detail-row">
+        <span>Booking ID:</span>
+        <span>{{ booking.id }}</span>
+      </div>
+    </div>
+
+    <div class="error-notice">
+      <i class="fas fa-exclamation-triangle"></i>
+      <strong>Payment Error:</strong> Your booking has been cancelled. The seat has been released and is available for others to book.
+      Please try booking again with a different payment method if needed.
+    </div>
+
+    <div style="margin-top: 2rem;">
+      <a href="{% url 'theater_list' booking.movie.id %}" class="btn-retry">
+        <i class="fas fa-redo"></i> Try Again
+      </a>
+      <a href="{% url 'movie_list' %}" class="btn-primary">
+        <i class="fas fa-film"></i> Browse Movies
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

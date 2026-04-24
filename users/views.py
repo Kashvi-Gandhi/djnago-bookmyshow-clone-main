@@ -4,10 +4,25 @@ from django.shortcuts import render,redirect
 from django.contrib.auth import login,authenticate
 from django.contrib.auth.decorators import login_required
 from movies.models import Movie , Booking
+from experiences.models import Booking as ExperienceBooking
+from experiences.models import Experience, ExperienceType
 
 def home(request):
-    movies= Movie.objects.all()
-    return render(request,'home.html',{'movies':movies})
+    movies = Movie.objects.all().order_by("-rating", "name")[:8]
+    events = Experience.objects.filter(type=ExperienceType.EVENT).order_by("-rating", "name")[:6]
+    premieres = Experience.objects.filter(type=ExperienceType.PREMIERE).order_by("-rating", "name")[:6]
+    music_studios = Experience.objects.filter(type=ExperienceType.MUSIC_STUDIO).order_by("-rating", "name")[:6]
+
+    return render(
+        request,
+        "home.html",
+        {
+            "movies": movies,
+            "events": events,
+            "premieres": premieres,
+            "music_studios": music_studios,
+        },
+    )
 def register(request):
     if request.method == 'POST':
         form=UserRegisterForm(request.POST)
@@ -35,7 +50,14 @@ def login_view(request):
 
 @login_required
 def profile(request):
-    bookings= Booking.objects.filter(user=request.user)
+    bookings = Booking.objects.filter(user=request.user).select_related(
+        'movie', 'theater', 'seat', 'payment'
+    ).order_by('-booked_at')
+
+    experience_bookings = ExperienceBooking.objects.filter(user=request.user).select_related(
+        'experience', 'session__venue', 'seat', 'payment'
+    ).order_by('-booked_at')
+
     if request.method == 'POST':
         u_form = UserUpdateForm(request.POST, instance=request.user)
         if u_form.is_valid():
@@ -44,7 +66,11 @@ def profile(request):
     else:
         u_form = UserUpdateForm(instance=request.user)
 
-    return render(request, 'users/profile.html', {'u_form': u_form,'bookings':bookings})
+    return render(
+        request,
+        'users/profile.html',
+        {'u_form': u_form, 'bookings': bookings, 'experience_bookings': experience_bookings},
+    )
 
 @login_required
 def reset_password(request):

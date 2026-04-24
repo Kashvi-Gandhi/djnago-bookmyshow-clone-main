@@ -1,0 +1,15 @@
+{% load tz %}
+Hello {{ user.username }},
+
+Your booking is confirmed!
+
+Movie: {{ movie.name }}
+Theater: {{ theater.name }}
+Show time: {{ show_time|localtime }}
+Seats: {% for seat in seats %}{{ seat }}{% if not forloop.last %}, {% endif %}{% endfor %}
+Payment IDs: {% for pid in payment_ids %}{{ pid }}{% if not forloop.last %}, {% endif %}{% endfor %}
+Booked at: {{ booked_at|localtime }}
+
+Keep this email for reference. Enjoy the show!
+
+-- BookMySeat

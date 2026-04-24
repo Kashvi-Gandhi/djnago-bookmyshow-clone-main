@@ -1,0 +1,419 @@
+{% extends "users/basic.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+.payment-container {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2.5rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.payment-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f8f9fa;
+}
+
+.movie-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #28a745;
+}
+
+.movie-info h4 {
+  margin-bottom: 0.75rem;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+.movie-info p {
+  margin-bottom: 0.5rem;
+  color: #555;
+}
+
+.booking-details {
+  margin-bottom: 1.5rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 1rem;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+  font-weight: bold;
+  font-size: 1.2rem;
+  padding: 1rem 0 0;
+  margin-top: 0.5rem;
+  border-top: 2px solid #28a745;
+  color: #28a745;
+}
+
+.payment-form {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.form-row {
+  margin-bottom: 1.5rem;
+}
+
+.stripe-row {
+  display: grid;
+  grid-template-columns: 1fr 160px 140px;
+  gap: 12px;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.stripe-input {
+  padding: 12px;
+  border: 2px solid #ced4da;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #111827;
+  font-family: 'Helvetica Neue', Helvetica, sans-serif;
+  min-height: 44px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.stripe-input:focus-within {
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.stripe-input.StripeElement--focus {
+  border-color: #28a745;
+}
+
+#card-errors {
+  color: #dc3545;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  padding: 8px 12px;
+  background: #f8d7da;
+  border-radius: 4px;
+  display: none;
+}
+
+#card-errors:not(:empty) {
+  display: block;
+}
+
+.btn-pay {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 1.15rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-pay:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.btn-pay:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.processing {
+  display: none;
+  text-align: center;
+  color: #6c757d;
+  margin-top: 1rem;
+}
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #28a745;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.security-notice {
+  background: #e7f3ff;
+  border: 1px solid #b3d7ff;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #004085;
+}
+
+.security-notice i {
+  color: #0066cc;
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 576px) {
+  .stripe-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<div class="container">
+  <div class="payment-container">
+    <div class="payment-header">
+      <h2>Complete Your Payment</h2>
+      <p>Secure payment powered by Stripe</p>
+    </div>
+
+    <div class="movie-info">
+      <h4>{{ booking.movie.name }}</h4>
+      <p><strong>Theater:</strong> {{ booking.theater.name }}</p>
+      <p><strong>Show Time:</strong> {{ booking.theater.time|date:"M d, Y g:i A" }}</p>
+      <p><strong>Seats:</strong> {% for b in related_bookings %}{{ b.seat.seat_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p class="text-muted small mb-0">Hold expires in <span id="hold-countdown">{{ seat_hold_seconds_remaining }}</span>s</p>
+    </div>
+
+    <div class="booking-details">
+      <div class="detail-row">
+        <span>Ticket Price:</span>
+        <span>Rs. {{ payment.amount|floatformat:0 }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Convenience Fee:</span>
+        <span>Rs. 0.00</span>
+      </div>
+      <div class="detail-row">
+        <span>Total Amount:</span>
+        <span>Rs. {{ payment.amount|floatformat:0 }}</span>
+      </div>
+    </div>
+
+    <form id="payment-form" class="payment-form">
+      {% csrf_token %}
+      <div class="form-row">
+        <label>
+          <strong>Credit or Debit Card</strong>
+          <small class="text-muted" style="display: block; margin-top: 4px;">Card Number • Expiry Date • CVC</small>
+        </label>
+        <div class="stripe-row">
+          <div id="card-number" class="stripe-input" aria-label="Card number"></div>
+          <div id="card-expiry" class="stripe-input" aria-label="Expiry date"></div>
+          <div id="card-cvc" class="stripe-input" aria-label="CVC"></div>
+        </div>
+        <div id="card-errors" role="alert"></div>
+      </div>
+
+      <button type="submit" class="btn-pay" id="submit-button">
+        Pay Rs. {{ payment.amount|floatformat:0 }}
+      </button>
+
+      <div class="processing" id="processing">
+        <div class="spinner"></div>
+        Processing payment...
+      </div>
+    </form>
+
+    <div class="security-notice">
+      <i class="fas fa-shield-alt"></i>
+      <strong>Secure Payment:</strong> Your card details are encrypted and processed securely by Stripe.
+      We do not store your payment information.
+    </div>
+
+    <div class="security-notice" style="background: #d1ecf1; border-color: #b8daff; color: #0c5460; margin-top: 1rem;">
+      <i class="fas fa-info-circle"></i>
+      <strong>For Testing:</strong> Use card <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px;">4242 4242 4242 4242</code>
+      with any future expiry date (e.g., 12/25) and any 3-digit CVC.
+    </div>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const HOLD_SECONDS = {{ seat_hold_seconds_remaining|default:0 }};
+  let secondsLeft = HOLD_SECONDS;
+  const countdownEl = document.getElementById('hold-countdown');
+  const stripe_public_key = '{{ stripe_public_key }}';
+  const confirmUrl = '{% url "payment_confirm" payment.id %}';
+  const csrfToken = (document.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value;
+  
+  // Check if Stripe is properly configured
+  if (!stripe_public_key || stripe_public_key.trim() === '') {
+    const cardErrors = document.getElementById('card-errors');
+    const submitButton = document.getElementById('submit-button');
+    const cardNumberEl = document.getElementById('card-number');
+    const cardExpiryEl = document.getElementById('card-expiry');
+    const cardCvcEl = document.getElementById('card-cvc');
+    
+    cardErrors.innerHTML = '<strong>Payment Configuration Error:</strong> Stripe payment gateway is not configured. Please contact support.';
+    cardErrors.style.background = '#f8d7da';
+    cardErrors.style.padding = '10px';
+    cardErrors.style.borderRadius = '4px';
+    if (cardNumberEl) cardNumberEl.style.display = 'none';
+    if (cardExpiryEl) cardExpiryEl.style.display = 'none';
+    if (cardCvcEl) cardCvcEl.style.display = 'none';
+    submitButton.disabled = true;
+    return;
+  }
+
+  const stripe = Stripe(stripe_public_key);
+  const elements = stripe.elements();
+
+  const baseStyle = {
+    style: {
+      base: {
+        fontSize: '16px',
+        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+        color: '#111827',
+        iconColor: '#28a745',
+        lineHeight: '24px',
+        '::placeholder': {
+          color: '#aab7c4',
+          fontSize: '15px',
+        },
+      },
+      invalid: {
+        color: '#dc3545',
+        iconColor: '#dc3545',
+      }
+    },
+  };
+
+  const cardNumber = elements.create('cardNumber', baseStyle);
+  const cardExpiry = elements.create('cardExpiry', baseStyle);
+  const cardCvc = elements.create('cardCvc', baseStyle);
+
+  cardNumber.mount('#card-number');
+  cardExpiry.mount('#card-expiry');
+  cardCvc.mount('#card-cvc');
+
+  // Handle form submission
+  const form = document.getElementById('payment-form');
+  const submitButton = document.getElementById('submit-button');
+  const processingDiv = document.getElementById('processing');
+  const cardErrors = document.getElementById('card-errors');
+
+  function expireHoldUi() {
+    submitButton.disabled = true;
+    processingDiv.style.display = 'none';
+    cardErrors.textContent = 'Seat hold expired. Please reselect seats.';
+    setTimeout(() => {
+      window.location.href = '{% url "booking_failed" booking.id %}';
+    }, 800);
+  }
+
+  if (secondsLeft <= 0) {
+    expireHoldUi();
+    return;
+  }
+
+  // Client-side countdown for clarity only. Server remains the source of truth.
+  setInterval(() => {
+    secondsLeft -= 1;
+    if (countdownEl) countdownEl.textContent = Math.max(0, secondsLeft);
+    if (secondsLeft <= 0) expireHoldUi();
+  }, 1000);
+
+  form.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    if (secondsLeft <= 0) {
+      expireHoldUi();
+      return;
+    }
+
+    submitButton.disabled = true;
+    processingDiv.style.display = 'block';
+    cardErrors.textContent = '';
+
+    try {
+      // Confirm payment with card
+      const { error, paymentIntent } = await stripe.confirmCardPayment('{{ client_secret }}', {
+        payment_method: {
+          card: cardNumber,
+        }
+      });
+
+      if (error) {
+        cardErrors.textContent = error.message;
+        submitButton.disabled = false;
+        processingDiv.style.display = 'none';
+      } else {
+        // Payment succeeded client-side; sync status on the server (webhook fallback for local dev).
+        if (paymentIntent.status === 'succeeded') {
+          try {
+            const resp = await fetch(confirmUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || '',
+              },
+              body: JSON.stringify({ payment_intent_id: paymentIntent.id }),
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok && data.payment_status === 'succeeded') {
+              window.location.href = '{% url "booking_success" booking.id %}';
+            } else if (resp.ok && (data.payment_status === 'failed' || data.payment_status === 'cancelled')) {
+              window.location.href = '{% url "booking_failed" booking.id %}';
+            } else {
+              // If server can't confirm immediately (e.g. processing), still show success page.
+              window.location.href = '{% url "booking_success" booking.id %}';
+            }
+          } catch (e) {
+            window.location.href = '{% url "booking_success" booking.id %}';
+          }
+        } else {
+          window.location.href = '{% url "booking_failed" booking.id %}';
+        }
+      }
+    } catch (err) {
+      cardErrors.textContent = 'An unexpected error occurred.';
+      submitButton.disabled = false;
+      processingDiv.style.display = 'none';
+    }
+  });
+
+  function wireStripeErrors(element) {
+    element.addEventListener('change', function(event) {
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else {
+        cardErrors.textContent = '';
+      }
+    });
+  }
+
+  wireStripeErrors(cardNumber);
+  wireStripeErrors(cardExpiry);
+  wireStripeErrors(cardCvc);
+});
+</script>
+
+{% endblock %}

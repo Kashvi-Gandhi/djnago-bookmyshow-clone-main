@@ -110,6 +110,72 @@
   margin-right: 5px;
 }
 
+/* Trailer embed */
+.trailer-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 20px;
+  padding: 12px;
+}
+.trailer-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #0d1117, #1f2937);
+  overflow: hidden;
+  border-radius: 8px;
+}
+.trailer-play {
+  all: unset;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  position: relative;
+}
+.trailer-thumb img,
+.trailer-thumb .fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.75);
+}
+.trailer-thumb .fallback {
+  display: grid;
+  place-items: center;
+  color: #cbd5e1;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.trailer-play-icon {
+  font-size: 52px;
+  z-index: 2;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.trailer-cta {
+  margin-top: 8px;
+  z-index: 2;
+  background: rgba(0,0,0,0.55);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.trailer-play:focus-visible {
+  outline: 3px solid #0d6efd;
+  outline-offset: 4px;
+}
+.trailer-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 /* Responsive Styling */
 @media (max-width: 768px) {
   .theatre-info {
@@ -137,6 +203,40 @@
     <div class="container">
       <!-- Movie Title -->
       <div class="movie-title">Movie - {{ movie.name }}</div>
+
+      {% if trailer_embed_url %}
+      <div class="trailer-card" aria-label="Movie trailer">
+        <div class="trailer-frame" data-embed="{{ trailer_embed_url }}" data-allowed-prefix="{{ trailer_embed_allowed_prefix }}">
+          <button type="button" class="trailer-play" aria-label="Play trailer">
+            <span class="trailer-thumb" role="presentation">
+              {% if trailer_poster_url %}
+              <img src="{{ trailer_poster_url }}" alt="Trailer thumbnail for {{ movie.name }}" loading="lazy">
+              {% else %}
+              <div class="fallback">Trailer preview unavailable</div>
+              {% endif %}
+            </span>
+            <span class="trailer-play-icon">&#9658;</span>
+            <span class="trailer-cta">Watch trailer</span>
+          </button>
+          <noscript>
+            <iframe
+              src="{{ trailer_embed_url }}"
+              title="Trailer for {{ movie.name }}"
+              loading="lazy"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </noscript>
+        </div>
+        <p class="trailer-note text-muted mb-0">We validate the YouTube URL server-side and lazy-load the player to keep the page fast.</p>
+        {% if trailer_watch_url %}
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">Having trouble? <a href="{{ trailer_watch_url }}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a></p>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="alert alert-info">Trailer unavailable. Check back later.</div>
+      {% endif %}
   
       <!-- Conditional Check for Theaters -->
       {% if theaters %}
@@ -171,11 +271,48 @@
         </div>
       {% endif %}
   
-      <div class="non-cancellable mt-4">
-        <i class="fas fa-circle text-warning"></i> Non-cancellable
-      </div>
-    </div>
-  </body>
+  <div class="non-cancellable mt-4">
+    <i class="fas fa-circle text-warning"></i> Non-cancellable
+  </div>
+</div>
+</body>
+<script>
+  (function() {
+    const container = document.querySelector('.trailer-frame');
+    if (!container) return;
+    const btn = container.querySelector('.trailer-play');
+    const embed = container.dataset.embed;
+    const allowedPrefix = container.dataset.allowedPrefix || 'https://www.youtube-nocookie.com/embed/';
+    if (!btn || !embed || !embed.startsWith(allowedPrefix)) {
+      container.innerHTML = '<div class="fallback" style="padding:16px; color:#cbd5e1; text-align:center;">Trailer unavailable</div>';
+      return;
+    }
+    const loadPlayer = () => {
+      const iframe = document.createElement('iframe');
+      iframe.src = embed;
+      iframe.title = 'Trailer';
+      iframe.loading = 'lazy';
+      iframe.allow =
+        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+      iframe.allowFullscreen = true;
+      iframe.referrerPolicy = 'no-referrer-when-downgrade';
+      container.innerHTML = '';
+      container.appendChild(iframe);
+    };
+    btn.addEventListener('click', loadPlayer, { once: true });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            btn.dataset.visible = '1';
+          }
+        });
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(container);
+  })();
+</script>
 <!-- <h1>Theater for {{movie.name}}</h1>
 <ul>
   {% for theater in theaters %}

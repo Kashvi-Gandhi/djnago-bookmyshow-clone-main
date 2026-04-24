@@ -1,0 +1,41 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <h1 class="mb-2 mb-md-0">Explore</h1>
+    <div class="text-muted">Book tickets for events, premieres, and music studios</div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">Events</h4>
+          <p class="card-text text-muted">Concerts, comedy, workshops, meetups</p>
+          <a href="{% url 'events' %}" class="btn btn-primary btn-block">Browse Events</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">Premieres</h4>
+          <p class="card-text text-muted">Early access shows, fan screenings, specials</p>
+          <a href="{% url 'premieres' %}" class="btn btn-primary btn-block">Browse Premieres</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">Music Studios</h4>
+          <p class="card-text text-muted">Jam rooms, recording slots, rehearsals</p>
+          <a href="{% url 'music_studios' %}" class="btn btn-primary btn-block">Browse Music Studios</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

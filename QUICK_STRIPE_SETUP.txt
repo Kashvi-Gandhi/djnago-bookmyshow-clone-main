@@ -1,0 +1,69 @@
+# Quick Stripe Setup (5 Minutes)
+
+## Step 1: Create Stripe Account
+- Go to https://stripe.com/register
+- Sign up (it's free)
+- Verify email
+
+## Step 2: Get Test Keys
+1. Log into Stripe Dashboard
+2. Click **Developers** (top right)
+3. Click **API keys**
+4. You'll see two keys starting with `pk_test_` and `sk_test_`
+5. Copy both keys
+
+## Step 3: Create .env File
+In your project root folder, create a file named `.env` (just ".env", no extension):
+
+```
+STRIPE_PUBLIC_KEY=pk_test_PASTE_YOUR_KEY_HERE
+STRIPE_SECRET_KEY=sk_test_PASTE_YOUR_KEY_HERE
+STRIPE_WEBHOOK_SECRET=whsec_test_placeholder
+```
+
+⚠️ **IMPORTANT**: Replace with your actual keys!
+
+## Step 4: Restart Server
+```bash
+python manage.py runserver
+```
+
+## Step 5: Test Payment
+1. Go to http://127.0.0.1:8000/
+2. Select a movie and book tickets
+3. On payment page, enter:
+   - Card: `4242 4242 4242 4242`
+   - Date: Any future date (e.g., 12/25)
+   - CVC: Any 3 digits (e.g., 123)
+4. Click "Pay"
+5. Should show "Booking Confirmed" ✓
+
+## Troubleshooting
+
+❌ **"Your card number is incomplete"**
+- The Stripe public key is missing
+- Create .env file and add STRIPE_PUBLIC_KEY
+- Restart server
+
+❌ **"API key is invalid"**
+- Check you're using **test** keys (pk_test_, sk_test_)
+- Make sure no extra spaces
+- Copy exact from dashboard
+
+❌ **"Payment failed"**
+- Check your internet
+- Verify card is valid test card (4242...)
+- Check Django logs for errors
+
+## Files to Check
+
+- `.env` - Your keys go here
+- `.env.example` - Example template
+- `STRIPE_SETUP_GUIDE.md` - Detailed guide
+
+## Test Cards
+- ✅ Success: `4242 4242 4242 4242`
+- ❌ Decline: `4000 0000 0000 0002`
+- 🔐 Auth Required: `4000 0025 0000 3155`
+
+That's it! You're ready to test payments.

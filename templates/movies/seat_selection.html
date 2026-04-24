@@ -1,17 +1,16 @@
-{% extends "users/basic.html" %} {% block content %}
+{% extends "users/basic.html" %} 
+{% block content %}
 <div class="container mt-5">
   <div class="row">
     <div class="col-lg-8 mx-auto">
       <!-- Movie and Theater Info -->
       <div class="card mb-4">
         <div class="card-body">
-          <div
-            class="d-flex justify-content-between align-items-center flex-wrap"
-          >
+          <div class="d-flex justify-content-between align-items-center flex-wrap">
             <div>
-              <h4 class="card-title">{{ theaters.movie.name }}</h4>
+              <h4 class="card-title">{{ theater.movie.name }}</h4>
               <p class="card-text text-muted">
-                {{ theaters.name }} | {{ theaters.time }}
+                {{ theater.name }} | {{ theater.time }}
               </p>
             </div>
             <div class="mt-2 mt-sm-0">
@@ -32,18 +31,27 @@
         </div>
       </div>
 
+      <!-- Reservation Status Alert -->
+      <div id="reservation-alert" class="alert alert-info d-none" role="alert">
+        <strong id="alert-title">Reservation Timer</strong>
+        <div id="alert-message">Loading seat status...</div>
+      </div>
+
       <!-- Seat Selection -->
       <div class="card">
         <div class="card-body">
           <h5 class="card-title text-center mb-4">Select Your Seats</h5>
           <div class="screen">All eyes this way please!</div>
 
-          <form method="POST">
+          <form method="POST" id="seat-selection-form">
             {% csrf_token %}
-            <div class="d-flex justify-content-center flex-wrap mb-4">
+            <div class="d-flex justify-content-center flex-wrap mb-4" id="seats-container">
               {% for seat in seats %}
-              <div class="seat {% if seat.is_booked %}sold{% endif %}">
-                {% if not seat.is_booked %}
+              <div class="seat {% if seat.is_booked %}sold{% elif seat.id in reserved_seat_ids %}reserved{% endif %}" 
+                   id="seat-wrapper-{{ seat.id }}" 
+                   data-seat-id="{{ seat.id }}"
+                   title="Seat {{ seat.seat_number }}">
+                {% if not seat.is_booked and seat.id not in reserved_seat_ids %}
                 <input
                   type="checkbox"
                   name="seats"
@@ -56,32 +64,48 @@
                   class="w-100 h-100 d-flex align-items-center justify-content-center"
                   >{{ seat.seat_number }}</label
                 >
-                {% else %} {{ seat.seat_number }} {% endif %}
+                {% else %} 
+                <span class="w-100 h-100 d-flex align-items-center justify-content-center">{{ seat.seat_number }}</span>
+                {% endif %}
               </div>
               {% endfor %}
             </div>
 
             <!-- Seat Legend -->
-            <div class="d-flex justify-content-center mb-4">
-              <div class="d-flex align-items-center me-4">
+            <div class="d-flex justify-content-center mb-4 flex-wrap">
+              <div class="d-flex align-items-center me-4 mb-2">
                 <div class="seat" style="background-color: white"></div>
-                <span class="ms-2">Available</span>
+                <span class="ms-2 small">Available</span>
               </div>
-              <div class="d-flex align-items-center me-4">
+              <div class="d-flex align-items-center me-4 mb-2">
                 <div class="seat selected"></div>
-                <span class="ms-2">Selected</span>
+                <span class="ms-2 small">Selected</span>
               </div>
-              <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center me-4 mb-2">
+                <div class="seat reserved"></div>
+                <span class="ms-2 small">Reserved (by others)</span>
+              </div>
+              <div class="d-flex align-items-center mb-2">
                 <div class="seat sold"></div>
-                <span class="ms-2">Sold</span>
+                <span class="ms-2 small">Sold/Booked</span>
               </div>
             </div>
 
+            <!-- Error Message -->
+            {% if error %}
+            <div class="alert alert-danger" role="alert">
+              {{ error }}
+            </div>
+            {% endif %}
+
             <!-- Book Button -->
             <div class="text-center">
-              <button type="submit" class="btn btn-success btn-lg">
+              <button type="submit" class="btn btn-success btn-lg" id="book-btn">
                 Book Selected Seats
               </button>
+              <div id="selected-count" class="mt-2 text-muted small">
+                <span id="seat-count">0</span> seat(s) selected
+              </div>
             </div>
           </form>
         </div>
@@ -89,6 +113,7 @@
     </div>
   </div>
 </div>
+
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -103,8 +128,9 @@
     cursor: pointer;
     border-radius: 5px;
     transition: background-color 0.3s, color 0.3s;
+    position: relative;
   }
-  .seat:hover {
+  .seat:hover:not(.sold):not(.reserved) {
     background-color: #28a745;
     color: white;
   }
@@ -116,6 +142,17 @@
     background-color: #ccc;
     cursor: not-allowed;
   }
+  .seat.reserved {
+    background-color: #ffc107;
+    cursor: not-allowed;
+  }
+  .seat.reserved::after {
+    content: "⏱";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 12px;
+  }
   .screen {
     margin: 20px 0;
     background-color: #ccc;
@@ -123,48 +160,175 @@
     text-align: center;
     line-height: 50px;
     color: #666;
+    font-weight: bold;
   }
-  .footer {
-    background-color: #333;
-    color: #ccc;
-    padding: 20px 0;
-  }
-  .footer a {
-    color: #ccc;
-    text-decoration: none;
-  }
-  .footer a:hover {
-    text-decoration: underline;
-  }
-  .footer .col-md-2,
-  .footer .col-md-3 {
-    margin-bottom: 20px;
-  }
-  .footer .social-icons i {
-    font-size: 20px;
-    margin: 0 10px;
+  #reservation-alert {
+    border-left: 4px solid #17a2b8;
   }
 </style>
-<!-- <h1>Seats for {{theater.name}} - {{theater.movie.name}}</h1>
-{% if error %}
-<p style="color:red;">{{error}}</p>
-{% endif %}
-<form method="POST">
-    {% csrf_token %}
-    <ul>
-        {% for seat in seats %}
-        <li>
-          Seats{{seat.seat_number}}:
-          {% if seat.is_booked %}
-          <strong>Booked seat {{seat.seat_number}}</strong>
-          {% else %}
-          <input type="checkbox" name="seats" value="{{seat.id}}">
-          <strong>Available seat {{seat.seat_number}}</strong>
-          {% endif%}
-        </li>
-        {% endfor %}
-      </ul>
-      <button type="submit">Book selected seats</button>
-</form> -->
+
+<script>
+// CONCURRENCY-SAFE REAL-TIME SEAT AVAILABILITY CHECKER
+// =====================================================
+// Continuously queries the server for seat availability
+// Prevents users from accidentally selecting seats that were just reserved
+
+const THEATER_ID = {{ theater.id }};
+const API_ENDPOINT = `/movies/theater/${THEATER_ID}/seats/api/availability/`;
+const POLL_INTERVAL = 3000; // Poll every 3 seconds
+const RESERVATION_WARNING_THRESHOLD = 30; // Warn when < 30 seconds left
+
+let poller = null;
+let reservationTimers = {};
+
+function updateSeatAvailability() {
+  fetch(API_ENDPOINT)
+    .then(response => response.json())
+    .then(data => {
+      updateUI(data);
+      updateReservationTimers(data);
+    })
+    .catch(error => console.error('Error fetching seat availability:', error));
+}
+
+function updateUI(data) {
+  const seatContainer = document.getElementById('seats-container');
+  const availableSeat = {};
+  
+  // Build map of available/reserved seats
+  data.seats.forEach(seat => {
+    availableSeat[seat.id] = seat;
+  });
+  
+  // Update each seat element
+  document.querySelectorAll('[data-seat-id]').forEach(element => {
+    const seatId = parseInt(element.getAttribute('data-seat-id'));
+    const seatData = availableSeat[seatId];
+    
+    if (!seatData) return;
+    
+    // Remove old classes
+    element.classList.remove('sold', 'reserved', 'last-warning');
+    
+    // Add appropriate class based on status
+    if (seatData.is_booked) {
+      element.classList.add('sold');
+    } else if (seatData.is_reserved) {
+      element.classList.add('reserved');
+      
+      // Check if reservation is expiring soon
+      const expiresIn = seatData.reservation.expires_in_seconds;
+      if (expiresIn < RESERVATION_WARNING_THRESHOLD) {
+        element.classList.add('last-warning');
+        element.title = `Seat ${seatData.seat_number} - Reserved (expires in ${expiresIn}s)`;
+      } else {
+        element.title = `Seat ${seatData.seat_number} - Reserved by another user`;
+      }
+    } else {
+      element.title = `Seat ${seatData.seat_number} - Available`;
+    }
+  });
+  
+  // Update summary
+  updateAlertMessage(data);
+}
+
+function updateReservationTimers(data) {
+  // Clear expired timers
+  Object.keys(reservationTimers).forEach(seatId => {
+    if (!data.seats.some(s => s.id == seatId && s.is_reserved)) {
+      clearInterval(reservationTimers[seatId]);
+      delete reservationTimers[seatId];
+    }
+  });
+  
+  // Add timers for reserved seats
+  data.seats.forEach(seat => {
+    if (seat.is_reserved && !reservationTimers[seat.id]) {
+      const reservation = seat.reservation;
+      let secondsLeft = reservation.expires_in_seconds;
+      
+      // Timer to count down reservation time
+      reservationTimers[seat.id] = setInterval(() => {
+        secondsLeft -= 1;
+        if (secondsLeft <= 0) {
+          clearInterval(reservationTimers[seat.id]);
+          delete reservationTimers[seat.id];
+          // Refresh UI (seat should now be available)
+          updateSeatAvailability();
+        }
+      }, 1000);
+    }
+  });
+}
+
+function updateAlertMessage(data) {
+  const alert = document.getElementById('reservation-alert');
+  const alertTitle = document.getElementById('alert-title');
+  const alertMessage = document.getElementById('alert-message');
+  
+  if (data.reserved_seats > 0) {
+    alertTitle.textContent = `⏱ ${data.reserved_seats} Seat(s) Reserved by Others`;
+    alertMessage.innerHTML = `
+      <small>
+        ${data.available_seats} available • 
+        ${data.booked_seats} booked • 
+        ${data.reserved_seats} temporary reservations (expire in 2 minutes)<br>
+        <em>Reservations will be released automatically if payment is not completed.</em>
+      </small>
+    `;
+    alert.classList.remove('d-none');
+  } else {
+    alert.classList.add('d-none');
+  }
+}
+
+// Update seat count when checkboxes change
+document.addEventListener('change', function(e) {
+  if (e.target.name === 'seats') {
+    const checked = document.querySelectorAll('input[name="seats"]:checked').length;
+    document.getElementById('seat-count').textContent = checked;
+  }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Initial fetch
+  updateSeatAvailability();
+  
+  // Set up polling
+  poller = setInterval(updateSeatAvailability, POLL_INTERVAL);
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+  if (poller) {
+    clearInterval(poller);
+  }
+  Object.values(reservationTimers).forEach(timer => clearInterval(timer));
+});
+
+// Form submission: verify seats are still available
+document.getElementById('seat-selection-form').addEventListener('submit', function(e) {
+  const checkedSeats = document.querySelectorAll('input[name="seats"]:checked');
+  if (checkedSeats.length === 0) {
+    e.preventDefault();
+    alert('Please select at least one seat');
+    return;
+  }
+  
+  // Additional check: ensure selected seats are not reserved
+  const seatElements = document.querySelectorAll('[data-seat-id]');
+  for (let element of seatElements) {
+    const checkbox = element.querySelector('input[name="seats"]');
+    if (checkbox && checkbox.checked && element.classList.contains('reserved')) {
+      e.preventDefault();
+      alert('One or more selected seats have been reserved by another user. Please refresh and try again.');
+      updateSeatAvailability();
+      return;
+    }
+  }
+});
+</script>
 
 {% endblock %}

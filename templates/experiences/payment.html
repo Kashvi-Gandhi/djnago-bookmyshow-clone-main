@@ -1,0 +1,196 @@
+{% extends "users/basic.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+.payment-container {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2.5rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.payment-header { text-align:center; margin-bottom: 1.5rem; }
+.movie-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #0ea5e9;
+}
+.detail-row { display:flex; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid #e9ecef; }
+.detail-row:last-child { border-bottom:none; font-weight:bold; }
+.payment-form { margin-top: 1rem; padding: 1.25rem; background: #f9f9f9; border-radius: 8px; border: 1px solid #e9ecef; }
+.stripe-row { display:grid; grid-template-columns: 1fr 160px 140px; gap: 12px; margin-top: 12px; margin-bottom: 8px; }
+.stripe-input { padding: 12px; border: 2px solid #ced4da; border-radius: 4px; background: #fff; color: #111827; min-height: 44px; }
+.stripe-input:focus-within { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
+.btn-pay { width:100%; padding:14px; background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%); border:none; border-radius:6px; color:#fff; font-weight:700; }
+#card-errors { color:#dc3545; font-size:0.9rem; margin-top: 0.5rem; padding: 8px 12px; background:#f8d7da; border-radius:4px; display:none; }
+#card-errors:not(:empty) { display:block; }
+@media (max-width: 576px) { .stripe-row { grid-template-columns: 1fr; } }
+</style>
+
+<div class="container">
+  <div class="payment-container">
+    <div class="payment-header">
+      <h2>Complete Your Payment</h2>
+      <p class="text-muted mb-0">Secure payment powered by Stripe</p>
+    </div>
+
+    <div class="movie-info">
+      <h4 class="mb-2">{{ booking.experience.name }}</h4>
+      <p class="mb-1"><strong>Venue:</strong> {{ booking.session.venue.name }}{% if booking.session.venue.city %}, {{ booking.session.venue.city }}{% endif %}</p>
+      <p class="mb-1"><strong>Start:</strong> {{ booking.session.start_time|date:"M d, Y g:i A" }}</p>
+      <p class="mb-1"><strong>Seats:</strong> {% for b in related_bookings %}{{ b.seat.seat_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p class="text-muted small mb-0">Hold expires in <span id="hold-countdown">{{ seat_hold_seconds_remaining }}</span>s</p>
+    </div>
+
+    <div class="booking-details">
+      <div class="detail-row">
+        <span>Total Amount:</span>
+        <span>₹{{ payment.amount|floatformat:0 }}</span>
+      </div>
+    </div>
+
+    <form id="payment-form" class="payment-form">
+      {% csrf_token %}
+      <div class="form-row">
+        <label>
+          <strong>Card Details</strong>
+          <small class="text-muted" style="display:block; margin-top: 4px;">Card Number • Expiry • CVC</small>
+        </label>
+        <div class="stripe-row">
+          <div id="card-number" class="stripe-input" aria-label="Card number"></div>
+          <div id="card-expiry" class="stripe-input" aria-label="Expiry date"></div>
+          <div id="card-cvc" class="stripe-input" aria-label="CVC"></div>
+        </div>
+        <div id="card-errors" role="alert"></div>
+      </div>
+
+      <button type="submit" class="btn-pay" id="submit-button">
+        Pay ₹{{ payment.amount|floatformat:0 }}
+      </button>
+      <div class="processing text-center text-muted mt-3" id="processing" style="display:none;">Processing…</div>
+    </form>
+
+    <div class="alert alert-info mt-3 mb-0">
+      <strong>For Testing:</strong> Use card <code>4242 4242 4242 4242</code> with any future expiry and any CVC.
+    </div>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const HOLD_SECONDS = {{ seat_hold_seconds_remaining|default:0 }};
+  let secondsLeft = HOLD_SECONDS;
+  const countdownEl = document.getElementById('hold-countdown');
+  const stripe_public_key = '{{ stripe_public_key }}';
+  const confirmUrl = '{% url "experience_payment_confirm" payment.id %}';
+  const csrfToken = (document.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value;
+
+  if (!stripe_public_key || stripe_public_key.trim() === '') {
+    const cardErrors = document.getElementById('card-errors');
+    const submitButton = document.getElementById('submit-button');
+    cardErrors.textContent = 'Stripe is not configured.';
+    submitButton.disabled = true;
+    return;
+  }
+
+  const stripe = Stripe(stripe_public_key);
+  const elements = stripe.elements();
+  const baseStyle = {
+    style: {
+      base: {
+        fontSize: '16px',
+        fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
+        color: '#111827',
+        '::placeholder': { color: '#aab7c4' },
+      },
+      invalid: { color: '#dc3545' }
+    }
+  };
+
+  const cardNumber = elements.create('cardNumber', baseStyle);
+  const cardExpiry = elements.create('cardExpiry', baseStyle);
+  const cardCvc = elements.create('cardCvc', baseStyle);
+  cardNumber.mount('#card-number');
+  cardExpiry.mount('#card-expiry');
+  cardCvc.mount('#card-cvc');
+
+  const form = document.getElementById('payment-form');
+  const submitButton = document.getElementById('submit-button');
+  const processingDiv = document.getElementById('processing');
+  const cardErrors = document.getElementById('card-errors');
+
+  function expireHoldUi() {
+    submitButton.disabled = true;
+    processingDiv.style.display = 'none';
+    cardErrors.textContent = 'Seat hold expired. Please reselect seats.';
+    setTimeout(() => {
+      window.location.href = '{% url "experience_booking_failed" booking.id %}';
+    }, 800);
+  }
+
+  if (secondsLeft <= 0) { expireHoldUi(); return; }
+
+  setInterval(() => {
+    secondsLeft -= 1;
+    if (countdownEl) countdownEl.textContent = Math.max(0, secondsLeft);
+    if (secondsLeft <= 0) expireHoldUi();
+  }, 1000);
+
+  function wireStripeErrors(element) {
+    element.addEventListener('change', function(event) {
+      cardErrors.textContent = event.error ? event.error.message : '';
+    });
+  }
+  wireStripeErrors(cardNumber);
+  wireStripeErrors(cardExpiry);
+  wireStripeErrors(cardCvc);
+
+  form.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    if (secondsLeft <= 0) { expireHoldUi(); return; }
+
+    submitButton.disabled = true;
+    processingDiv.style.display = 'block';
+    cardErrors.textContent = '';
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment('{{ client_secret }}', {
+      payment_method: { card: cardNumber }
+    });
+
+    if (error) {
+      cardErrors.textContent = error.message;
+      submitButton.disabled = false;
+      processingDiv.style.display = 'none';
+      return;
+    }
+
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      try {
+        const resp = await fetch(confirmUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' },
+          body: JSON.stringify({ payment_intent_id: paymentIntent.id })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.payment_status === 'succeeded') {
+          window.location.href = '{% url "experience_booking_success" booking.id %}';
+        } else {
+          window.location.href = '{% url "experience_booking_success" booking.id %}';
+        }
+      } catch (e) {
+        window.location.href = '{% url "experience_booking_success" booking.id %}';
+      }
+      return;
+    }
+
+    window.location.href = '{% url "experience_booking_failed" booking.id %}';
+  });
+});
+</script>
+{% endblock %}
+

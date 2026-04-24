@@ -52,7 +52,7 @@
           <h4 class="mb-0"><i class="fas fa-ticket-alt me-2"> </i> Your Bookings</h4>
         </div>
         <div class="card-body">
-          {% if bookings %}
+          {% if bookings or experience_bookings %}
             <div class="row row-cols-1 row-cols-md-2 g-4">
               {% for booking in bookings %}
                 <div class="col">
@@ -62,7 +62,49 @@
                       <p class="card-text">
                         <i class="fas fa-film me-2 text-muted"> </i>  {{ booking.theater.name }}<br>
                         <i class="fas fa-chair me-2 text-muted"> </i>  Seat: {{ booking.seat.seat_number }}<br>
-                        <i class="far fa-clock me-2 text-muted"> </i>  {{ booking.booked_at|date:"F d, Y H:i" }}
+                        <i class="far fa-clock me-2 text-muted"> </i>  {{ booking.theater.time|date:"M d, Y g:i A" }}<br>
+                        <i class="fas fa-calendar me-2 text-muted"> </i>  Booked: {{ booking.booked_at|date:"M d, Y H:i" }}<br>
+                        {% if booking.payment %}
+                          <i class="fas fa-credit-card me-2 text-muted"> </i>  Amount: ₹{{ booking.payment.amount|floatformat:0 }}<br>
+                          <span class="badge
+                            {% if booking.status == 'confirmed' %}bg-success
+                            {% elif booking.status == 'pending_payment' %}bg-warning
+                            {% elif booking.status == 'cancelled' %}bg-danger
+                            {% elif booking.status == 'refunded' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                            {{ booking.get_status_display }}
+                          </span>
+                        {% else %}
+                          <span class="badge bg-secondary">Legacy Booking</span>
+                        {% endif %}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+
+              {% for booking in experience_bookings %}
+                <div class="col">
+                  <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                      <h5 class="card-title">{{ booking.experience.name }}</h5>
+                      <p class="card-text">
+                        <i class="fas fa-map-marker-alt me-2 text-muted"></i> {{ booking.session.venue.name }}{% if booking.session.venue.city %}, {{ booking.session.venue.city }}{% endif %}<br>
+                        <i class="far fa-clock me-2 text-muted"></i> {{ booking.session.start_time|date:"M d, Y g:i A" }}<br>
+                        <i class="fas fa-chair me-2 text-muted"></i> Seat: {{ booking.seat.seat_number }}<br>
+                        <i class="fas fa-calendar me-2 text-muted"></i> Booked: {{ booking.booked_at|date:"M d, Y H:i" }}<br>
+                        {% if booking.payment %}
+                          <i class="fas fa-credit-card me-2 text-muted"></i> Amount: ₹{{ booking.payment.amount|floatformat:0 }}<br>
+                          <span class="badge
+                            {% if booking.status == 'confirmed' %}bg-success
+                            {% elif booking.status == 'pending_payment' %}bg-warning
+                            {% elif booking.status == 'cancelled' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ booking.get_status_display }}
+                          </span>
+                        {% else %}
+                          <span class="badge bg-secondary">Legacy Booking</span>
+                        {% endif %}
                       </p>
                     </div>
                   </div>
@@ -72,7 +114,7 @@
           {% else %}
             <div class="text-center py-5">
               <i class="fas fa-ticket-alt fa-4x text-muted mb-3"></i>
-              <p class="lead mb-0">No bookings yet. Time to plan your next movie night!</p>
+              <p class="lead mb-0">No bookings yet. Time to plan your next outing!</p>
             </div>
           {% endif %}
         </div>

@@ -1,0 +1,36 @@
+import logging
+
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+def search_trailer_video_id(name: str, api_key: str, timeout_seconds: float = 2.5):
+    if not api_key or not name:
+        return None
+
+    query = f"{name} trailer"
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={
+                "part": "snippet",
+                "q": query,
+                "type": "video",
+                "maxResults": 1,
+                "videoEmbeddable": "true",
+                "safeSearch": "moderate",
+                "key": api_key,
+            },
+            timeout=timeout_seconds,
+        )
+        resp.raise_for_status()
+        data = resp.json() or {}
+        items = data.get("items") or []
+        if not items:
+            return None
+        return (items[0].get("id") or {}).get("videoId")
+    except Exception as e:
+        logger.info("YouTube API lookup failed for %r: %s", query, str(e))
+        return None
+

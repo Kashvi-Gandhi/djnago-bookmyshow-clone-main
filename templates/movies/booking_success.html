@@ -1,0 +1,123 @@
+{% extends "users/basic.html" %}
+
+{% block content %}
+<style>
+.success-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 4rem;
+  color: #28a745;
+  margin-bottom: 1rem;
+}
+
+.booking-details {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+  font-weight: bold;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  margin: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  color: white;
+  text-decoration: none;
+}
+
+.email-notice {
+  background: #e7f3ff;
+  border: 1px solid #b3d7ff;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #004085;
+}
+</style>
+
+<div class="container">
+  <div class="success-container">
+    <div class="success-icon">
+      <i class="fas fa-check-circle"></i>
+    </div>
+
+    <h2>Booking Confirmed!</h2>
+    <p>Your payment was successful and your tickets are confirmed.</p>
+
+    <div class="booking-details">
+      <h4>Booking Details</h4>
+      <div class="detail-row">
+        <span>Movie:</span>
+        <span>{{ booking.movie.name }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Theater:</span>
+        <span>{{ booking.theater.name }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Show Time:</span>
+        <span>{{ booking.theater.time|date:"M d, Y g:i A" }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Seats:</span>
+        <span>{% for b in related_bookings %}{{ b.seat.seat_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+      </div>
+      <div class="detail-row">
+        <span>Booking ID:</span>
+        <span>{{ booking.id }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Payment ID:</span>
+        <span>{{ booking.payment_id }}</span>
+      </div>
+    </div>
+
+    <div class="email-notice">
+      <i class="fas fa-envelope"></i>
+      A confirmation email has been sent to your registered email address with your ticket details.
+    </div>
+
+    <div style="margin-top: 2rem;">
+      <a href="{% url 'movie_list' %}" class="btn-primary">
+        <i class="fas fa-film"></i> Book More Tickets
+      </a>
+      <a href="{% url 'profile' %}" class="btn-primary">
+        <i class="fas fa-user"></i> View Profile
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

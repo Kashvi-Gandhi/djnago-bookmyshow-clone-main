@@ -1,0 +1,19 @@
+{% load tz %}
+<!DOCTYPE html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #222;">
+    <h2>Booking Confirmed</h2>
+    <p>Hi {{ user.username }},</p>
+    <p>Your tickets are confirmed. Here are the details:</p>
+    <ul>
+      <li><strong>Movie:</strong> {{ movie.name }}</li>
+      <li><strong>Theater:</strong> {{ theater.name }}</li>
+      <li><strong>Show time:</strong> {{ show_time|localtime }}</li>
+      <li><strong>Seats:</strong> {% for seat in seats %}{{ seat }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+      <li><strong>Payment IDs:</strong> {% for pid in payment_ids %}{{ pid }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
+      <li><strong>Booked at:</strong> {{ booked_at|localtime }}</li>
+    </ul>
+    <p>Please keep this email for reference. Enjoy the show!</p>
+    <p style="color: #666; font-size: 12px;">If you did not make this booking, please contact support immediately.</p>
+  </body>
+</html>

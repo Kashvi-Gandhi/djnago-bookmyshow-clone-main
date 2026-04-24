@@ -1,0 +1,250 @@
+{% extends "users/basic.html" %}
+{% load tz %}
+
+{% block content %}
+<style>
+/* Movie Detail Styling */
+.movie-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 40px 0;
+  margin-bottom: 30px;
+}
+
+.movie-poster {
+  max-width: 300px;
+  border-radius: 10px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.movie-info {
+  padding-left: 30px;
+}
+
+.movie-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.movie-meta {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 20px;
+}
+
+.movie-description {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.movie-details {
+  background: #f8f9fa;
+  padding: 30px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-label {
+  font-weight: bold;
+  color: #495057;
+}
+
+/* Trailer embed with lazy loading */
+.trailer-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  overflow: hidden;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.trailer-frame {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  background: #000;
+}
+
+.trailer-frame.loaded {
+  height: auto;
+  padding-bottom: 0;
+}
+
+.trailer-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px 10px 0 0;
+}
+
+.trailer-play {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.trailer-play:hover {
+  background-color: rgba(0,0,0,0.3);
+}
+
+.trailer-thumb {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.trailer-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px 10px 0 0;
+}
+
+.trailer-thumb .fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+  color: #6c757d;
+  font-size: 1.2rem;
+  border-radius: 10px 10px 0 0;
+}
+
+.trailer-play-icon {
+  font-size: 4rem;
+  color: white;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  margin-bottom: 10px;
+}
+
+.trailer-cta {
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.trailer-note {
+  padding: 15px;
+  background: #e9ecef;
+  font-size: 0.9rem;
+  color: #495057;
+  margin: 0;
+}
+
+.btn-book {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border: none;
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: 25px;
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.btn-book:hover {
+  transform: translateY(-2px);
+  color: white;
+  text-decoration: none;
+}
+
+.detail-value {
+  margin: 8px 0 0 0;
+  font-size: 1.05rem;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .movie-info {
+    padding-left: 0;
+    padding-top: 20px;
+    text-align: center;
+  }
+
+  .movie-title {
+    font-size: 2rem;
+  }
+}
+</style>
+
+<div class="movie-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-4 text-center">
+        {% if movie.image %}
+          <img src="{{ movie.image.url }}" alt="{{ movie.name }} poster" class="movie-poster">
+        {% else %}
+          <div class="movie-poster bg-secondary d-flex align-items-center justify-content-center text-white" style="height: 400px;">
+            No Image
+          </div>
+        {% endif %}
+      </div>
+      <div class="col-md-8 movie-info">
+        <h1 class="movie-title">{{ movie.name }}</h1>
+        <div class="movie-meta">
+          <span class="badge badge-warning mr-2">★ {{ movie.rating }}</span>
+          <span class="badge badge-info">{{ movie.language.name }}</span>
+        </div>
+        <p class="movie-description">{{ movie.description|default:"No description available." }}</p>
+        <a href="{% url 'theater_list' movie.id %}" class="btn-book">Book Tickets</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="movie-details">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="detail-section">
+          <div class="detail-label">Cast:</div>
+          <p>{{ movie.cast|default:"Not available" }}</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="detail-section">
+          <div class="detail-label">Genres:</div>
+          <p>
+            {% for genre in movie.genres.all %}
+              <span class="badge badge-secondary">{{ genre.name }}</span>
+            {% empty %}
+              Not specified
+            {% endfor %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info" style="margin-top: 30px;">
+    <i class="fas fa-info-circle"></i> Click <strong>Book Tickets</strong> to select your theater and seats.
+  </div>
+</div>
+
+{% endblock %}

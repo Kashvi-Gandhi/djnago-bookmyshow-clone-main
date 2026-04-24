@@ -20,6 +20,26 @@
       body {
         font-family: Arial, sans-serif;
       }
+      /* Responsive tweaks */
+      .card-img-top {
+        width: 100%;
+        height: auto;
+      }
+      @media (max-width: 767.98px) {
+        .navbar-brand img {
+          height: 32px;
+        }
+        .navbar .container {
+          max-width: 100%;
+        }
+        .footer .row > div {
+          text-align: center;
+        }
+        .footer .social-icons {
+          display: flex;
+          justify-content: center;
+        }
+      }
       .navbar {
         background-color: #fff;
         padding: 10px 20px;
@@ -95,13 +115,22 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ml-auto">
-            {% if user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="/">Home</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/movies">Movies</a>
+              <a class="nav-link" href="{% url 'movie_list' %}">Movies</a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'events' %}">Events</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'premieres' %}">Premieres</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'music_studios' %}">Music Studios</a>
+            </li>
+            {% if user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'profile' %}">Profile</a>
             </li>

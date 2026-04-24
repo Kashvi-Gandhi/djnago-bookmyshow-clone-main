@@ -12,22 +12,27 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 import dj_database_url
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# Require SECRET_KEY in the environment for deployed environments; fall back only for local dev.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-only-secret-key-change-me')
+# Reads from env first; falls back to the provided production key so Vercel runs even if env vars are missing.
+SECRET_KEY = os.environ.get('SECRET_KEY', '<n(16lfm-d*()890vo(7pxbs!i=q_og)pf3))nis+x68p06h9%!>')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+# Default to debug-on for local runs; set DJANGO_DEBUG=false in production.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['.vercel.app', 'localhost', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['https://*.vercel.app']
 
 
 # Application definition
@@ -39,12 +44,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'users',
-    'movies',
+    'users.apps.UsersConfig',
+    'movies.apps.MoviesConfig',
+    'experiences.apps.ExperiencesConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -54,7 +61,39 @@ MIDDLEWARE = [
 ]
 
 AUTH_USER_MODEL='auth.User'
-EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@example.com")
+
+# If secure SMTP settings are provided, switch backend automatically.
+if EMAIL_HOST:
+    EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+
+# Stripe Payment Settings
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "").strip()
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "INR").strip() or "INR"
+try:
+    TICKET_PRICE = float(os.getenv("TICKET_PRICE", "250.00"))  # Price per ticket in INR
+except ValueError:
+    TICKET_PRICE = 250.00
+SEAT_HOLD_MINUTES = int(os.getenv("SEAT_HOLD_MINUTES", "2"))
+RESERVATION_CLEANUP_INTERVAL_SECONDS = int(os.getenv("RESERVATION_CLEANUP_INTERVAL_SECONDS", "30"))
+ENABLE_BACKGROUND_SCHEDULER = os.getenv("ENABLE_BACKGROUND_SCHEDULER", "true").lower() == "true"
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "").strip()
+# Base URL used to embed YouTube trailers. Some environments/browsers can be picky
+# about the domain; allow override via env.
+# Examples:
+# - https://www.youtube-nocookie.com/embed/  (default, privacy-friendly)
+# - https://www.youtube.com/embed/
+YOUTUBE_EMBED_BASE = os.getenv(
+    "YOUTUBE_EMBED_BASE", "https://www.youtube-nocookie.com/embed/"
+).strip()
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -84,19 +123,30 @@ WSGI_APPLICATION = 'bookmyseat.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+DATABASE_URL = os.environ.get('DATABASE_URL')
+RUNNING_TESTS = 'test' in sys.argv
 
-if 'DATABASE_URL' in os.environ:
-    DATABASES['default'] = dj_database_url.config(
-        default=os.environ['DATABASE_URL'],
-        conn_max_age=600,
-        ssl_require=True,  # Render Postgres requires SSL; ensures psycopg2 uses sslmode=require
-    )
+use_remote_db = (
+    DATABASE_URL
+    and not RUNNING_TESTS  # Default to sqlite for tests unless explicitly overridden.
+    or os.environ.get('USE_DATABASE_URL_FOR_TESTS', 'false').lower() == 'true'
+)
+
+if use_remote_db and DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,  # Render Postgres requires SSL; ensures psycopg2 uses sslmode=require
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -132,9 +182,47 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Minimal logging so email queue failures are visible in ops logs.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s %(name)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        # Surface email sending failures and queue processing issues.
+        'movies.management.commands.process_email_queue': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Lightweight perf logging for hot endpoints (e.g., movie list).
+        'movies.perf': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}

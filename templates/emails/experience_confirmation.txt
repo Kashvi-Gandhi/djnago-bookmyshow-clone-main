@@ -1,0 +1,13 @@
+Hi {{ user.username }},
+
+Your booking is confirmed!
+
+Experience: {{ experience.name }} ({{ experience.type }})
+Venue: {{ venue.name }}{% if venue.city %}, {{ venue.city }}{% endif %}
+Start: {{ start_time }}
+Seats: {% for s in seats %}{{ s }}{% if not forloop.last %}, {% endif %}{% endfor %}
+Payment ID: {{ payment_ids.0 }}
+
+Thanks,
+BookMySeat
+
