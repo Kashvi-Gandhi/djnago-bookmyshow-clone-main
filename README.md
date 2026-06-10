@@ -28,3 +28,7 @@ How to run:
     - .\.venv\Scripts\python.exe manage.py runserver
     - .\.venv\Scripts\python.exe manage.py process_email_queue --limit 50
     
+
+
+Admin Analytics Dashbaord :- http://127.0.0.1:8000/analytics/dashboard/
+Admin controls :- http://127.0.0.1:8000/admin/

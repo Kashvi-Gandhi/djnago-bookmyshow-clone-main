@@ -25,6 +25,13 @@ def admin_required(view_func):
                 return JsonResponse({'error': 'Unauthorized'}, status=401)
             return redirect(f"{reverse('login')}?next={request.path}")
 
+        # Auto-provision AdminUser profile for Django superusers to grant dashboard access
+        if request.user.is_superuser:
+            AdminUser.objects.get_or_create(
+                user=request.user,
+                defaults={'role': 'superadmin', 'is_active': True}
+            )
+
         try:
             admin_profile = request.user.admin_profile
             
@@ -65,6 +72,41 @@ def analytics_dashboard(request):
     }
     return render(request, 'analytics/dashboard.html', context)
 
+
+@admin_required
+def revenue_trends_dashboard(request):
+    """
+    Dedicated dashboard view for detailed revenue trends.
+    """
+    context = {
+        'title': 'Revenue Trends',
+        'admin_role': request.user.admin_profile.get_role_display(),
+    }
+    return render(request, 'analytics/revenue_trends.html', context)
+
+
+@admin_required
+def movie_performance_dashboard(request):
+    """
+    Dedicated dashboard view for movie performance insights.
+    """
+    context = {
+        'title': 'Movie Performance',
+        'admin_role': request.user.admin_profile.get_role_display(),
+    }
+    return render(request, 'analytics/movie_performance.html', context)
+
+
+@admin_required
+def experience_insights_dashboard(request):
+    """
+    Dedicated dashboard view for experience insights.
+    """
+    context = {
+        'title': 'Experience Insights',
+        'admin_role': request.user.admin_profile.get_role_display(),
+    }
+    return render(request, 'analytics/experience_insights.html', context)
 
 @admin_required
 @cache_page(3600)  # Cache for 1 hour

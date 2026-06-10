@@ -1,9 +1,10 @@
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
-from django.core.exceptions import ValidationError
 from urllib.parse import urlparse, parse_qs
 import uuid
 import re
@@ -416,7 +417,7 @@ class AnalyticsCache(models.Model):
     
     cache_key = models.CharField(max_length=100, unique=True, db_index=True)
     cache_label = models.CharField(max_length=100, choices=CACHE_KEYS, default="daily_revenue")
-    data = models.JSONField()
+    data = models.JSONField(encoder=DjangoJSONEncoder)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(db_index=True)
     

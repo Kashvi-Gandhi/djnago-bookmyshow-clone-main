@@ -21,12 +21,28 @@ class Experience(models.Model):
     type = models.CharField(max_length=32, choices=ExperienceType.choices, db_index=True)
     image = models.ImageField(upload_to="experiences/", blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=1, default=0)
+    language = models.ForeignKey(
+        "movies.Language", 
+        on_delete=models.PROTECT, 
+        related_name="experiences",
+        null=True, 
+        blank=True
+    )
+    director = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True, 
+        help_text="Director or main performer"
+    )
     description = models.TextField(blank=True, null=True)
     trailer_url = models.URLField(blank=True, null=True)
 
     class Meta:
         ordering = ["-rating", "name"]
-        indexes = [models.Index(fields=["type", "name"])]
+        indexes = [
+            models.Index(fields=["type", "name"]),
+            models.Index(fields=["rating"]),
+        ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.type})"

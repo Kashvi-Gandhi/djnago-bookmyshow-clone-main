@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from .models import Booking, Experience, ExperienceType, Seat, SeatReservation, Session
@@ -246,6 +247,7 @@ def booking_failed(request, booking_id):
     return render(request, "experiences/booking_failed.html", {"booking": booking, "related_bookings": related_bookings})
 
 
+@csrf_exempt
 def stripe_webhook(request):
     from .payment_service import process_payment_webhook
 

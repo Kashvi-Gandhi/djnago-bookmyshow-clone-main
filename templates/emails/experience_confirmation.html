@@ -1,15 +1,49 @@
-<html>
-  <body>
-    <p>Hi {{ user.username }},</p>
-    <p><strong>Your booking is confirmed!</strong></p>
-    <ul>
-      <li><strong>Experience:</strong> {{ experience.name }} ({{ experience.type }})</li>
-      <li><strong>Venue:</strong> {{ venue.name }}{% if venue.city %}, {{ venue.city }}{% endif %}</li>
-      <li><strong>Start:</strong> {{ start_time }}</li>
-      <li><strong>Seats:</strong> {% for s in seats %}{{ s }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>
-      <li><strong>Payment ID:</strong> {{ payment_ids.0 }}</li>
-    </ul>
-    <p>Thanks,<br/>BookMySeat</p>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Booking Confirmation for {{ experience.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; }
+        .header { background-color: #007bff; color: #ffffff; padding: 10px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 20px; }
+        .footer { text-align: center; font-size: 0.9em; color: #777; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+        .button { display: inline-block; background-color: #28a745; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        ul { list-style-type: none; padding: 0; }
+        ul li { margin-bottom: 5px; }
+        .highlight { font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Booking Confirmed!</h2>
+        </div>
+        <div class="content">
+            <p>Hello <span class="highlight">{{ user.username }}</span>,</p>
+            <p>Your booking for <span class="highlight">{{ experience.name }}</span> ({{ experience.type|capfirst }}) is confirmed!</p>
+            
+            <h3>Booking Details:</h3>
+            <ul>
+                <li><strong>Experience:</strong> <span class="highlight">{{ experience.name }}</span></li>
+                <li><strong>Type:</strong> {{ experience.type|capfirst }}</li>
+                <li><strong>Venue:</strong> {{ venue.name }}{% if venue.city %}, {{ venue.city }}{% endif %}</li>
+                <li><strong>Session Time:</strong> <span class="highlight">{{ start_time|date:"F d, Y H:i" }}</span></li>
+                <li><strong>Seats:</strong> <span class="highlight">{{ seats|join:", " }}</span></li>
+                <li><strong>Booked At:</strong> {{ booked_at|date:"F d, Y H:i" }}</li>
+            </ul>
+            
+            <p>Thank you for booking with BookMySeat! We look forward to seeing you there.</p>
+            
+            <p style="text-align: center;">
+                <a href="{% url 'profile' %}" class="button">View Your Bookings</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>&copy; {{ "now"|date:"Y" }} BookMySeat. All rights reserved.</p>
+        </div>
+    </div>
+</body>
 </html>
-

@@ -113,13 +113,15 @@ def _cleanup_expired_reservations_task():
     """
     try:
         from .payment_service import cleanup_expired_reservations
+        from experiences.payment_service import cleanup_expired_reservations as cleanup_exp
         
         expired_count, cancelled_payment_count = cleanup_expired_reservations()
+        exp_expired, exp_cancelled = cleanup_exp()
         
-        if expired_count > 0 or cancelled_payment_count > 0:
+        if any([expired_count, cancelled_payment_count, exp_expired, exp_cancelled]):
             logger.info(
-                f"Scheduler cleanup completed: {expired_count} expired reservations, "
-                f"{cancelled_payment_count} cancelled payments"
+                f"Cleanup: Movies({expired_count} res, {cancelled_payment_count} pay), "
+                f"Experiences({exp_expired} res, {exp_cancelled} pay)"
             )
     except Exception as e:
         # Log but don't raise - scheduler should continue despite errors

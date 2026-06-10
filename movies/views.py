@@ -8,13 +8,16 @@ from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Subquery
 from django.db import connection
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from time import perf_counter
+from django.contrib.admin.views.decorators import staff_member_required
 
-from .models import Booking, EmailQueue, Genre, Language, Movie, Seat, Theater, SeatReservation
+from .models import Booking, EmailQueue, Genre, Language, Movie, Seat, Theater, SeatReservation, AdminUser
+from .analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("movies.perf")
@@ -67,20 +70,28 @@ def movie_list(request):
         base_language_counts = base_language_counts.filter(genres__id__in=genre_ids)
     base_language_ids = Subquery(base_language_counts.distinct().values("id"))
 
-    genres_with_counts = Genre.objects.annotate(
-        filtered_count=Count(
-            "movies",
-            filter=Q(movies__id__in=base_genre_ids),
-            distinct=True,
-        )
-    )
-    languages_with_counts = Language.objects.annotate(
-        filtered_count=Count(
-            "movies",
-            filter=Q(movies__id__in=base_language_ids),
-            distinct=True,
-        )
-    )
+    # Scalable facet counts with 15-minute caching
+    facet_cache_key = f"facets:{search_query}:g{','.join(sorted(genre_ids))}:l{','.join(sorted(language_ids))}"
+    cached_facets = cache.get(facet_cache_key)
+    
+    if cached_facets:
+        genres_with_counts, languages_with_counts = cached_facets
+    else:
+        genres_with_counts = list(Genre.objects.annotate(
+            filtered_count=Count(
+                "movies",
+                filter=Q(movies__id__in=base_genre_ids),
+                distinct=True,
+            )
+        ))
+        languages_with_counts = list(Language.objects.annotate(
+            filtered_count=Count(
+                "movies",
+                filter=Q(movies__id__in=base_language_ids),
+                distinct=True,
+            )
+        ))
+        cache.set(facet_cache_key, (genres_with_counts, languages_with_counts), 900)
 
     explain_plan = None
     if settings.DEBUG and request.GET.get("explain"):
@@ -441,6 +452,7 @@ def booking_failed(request, booking_id):
     return render(request, 'movies/booking_failed.html', {'booking': booking, 'related_bookings': related_bookings})
 
 
+@csrf_exempt
 def stripe_webhook(request):
     """Handle Stripe webhooks with idempotency"""
     from .payment_service import process_payment_webhook

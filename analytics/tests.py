@@ -172,6 +172,17 @@ class AnalyticsDashboardTests(TestCase):
         content = json.loads(response.content)
         self.assertEqual(content['data'][0]['occupancy_rate'], 50.0)
 
+    def test_analytics_service_dashboard_metrics(self):
+        """Verify the movie analytics service can build dashboard metrics."""
+        from movies.analytics_service import AnalyticsService
+
+        metrics, from_cache = AnalyticsService.get_dashboard_metrics()
+        self.assertIsInstance(metrics, dict)
+        self.assertIn('daily_revenue', metrics)
+        self.assertIn('popular_movies', metrics)
+        self.assertFalse(from_cache)
+        self.assertIn('cancellation_rate', metrics)
+
     def test_peak_booking_hours_aggregation(self):
         """Verify hour extraction logic."""
         # Current hour

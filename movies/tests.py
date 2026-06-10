@@ -136,6 +136,29 @@ class EmailQueueTests(TestCase):
         self.assertGreater(task.scheduled_at, timezone.now())
 
 
+class WebhookEndpointTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def test_movies_stripe_webhook_is_csrf_exempt(self):
+        response = self.client.post(
+            reverse("stripe_webhook"),
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Missing signature", response.json().get("error", ""))
+
+    def test_experiences_stripe_webhook_is_csrf_exempt(self):
+        response = self.client.post(
+            reverse("experience_stripe_webhook"),
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Missing signature", response.json().get("error", ""))
+
+
 class TrailerValidationTests(TestCase):
     def setUp(self):
         self.lang, _ = Language.objects.get_or_create(code="en", name="English")
