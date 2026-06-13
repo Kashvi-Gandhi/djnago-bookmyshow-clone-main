@@ -150,12 +150,19 @@ if use_remote_db and DATABASE_URL:
             ssl_require=os.environ.get('POSTGRES_REQUIRE_SSL', 'True').lower() == 'true',
         )
     }
-    # PgBouncer/Supabase optimizations
-    DATABASES['default'].setdefault('OPTIONS', {}).update({
+    # PgBouncer/Supabase optimizations and cleanup
+    db_config = DATABASES['default']
+    options = db_config.setdefault('OPTIONS', {})
+
+    # Remove 'pgbouncer' from options as psycopg2 rejects unknown connection parameters
+    options.pop('pgbouncer', None)
+
+    options.update({
         'options': '-c search_path=public',
-        # This helps with "Cannot assign requested address" errors in serverless
         'connect_timeout': 10,
     })
+    # Correct Django configuration for PgBouncer Transaction Mode
+    db_config['DISABLE_SERVER_SIDE_CURSORS'] = True
 else:
     DATABASES = {
         'default': {
