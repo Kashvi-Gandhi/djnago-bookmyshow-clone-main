@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "bookmyseat/wsgi.py": {}
-  },
   "routes": [
     {
       "src": "/static/(.*)",
