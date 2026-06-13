@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q, Subquery
+from django.db.models import Count, Q
 from django.db import connection
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -63,12 +63,12 @@ def movie_list(request):
     base_genre_counts = queryset
     if language_ids:
         base_genre_counts = base_genre_counts.filter(language_id__in=language_ids)
-    base_genre_ids = Subquery(base_genre_counts.distinct().values("id"))
+    base_genre_qs = base_genre_counts.distinct().values("id")
 
     base_language_counts = queryset
     if genre_ids:
         base_language_counts = base_language_counts.filter(genres__id__in=genre_ids)
-    base_language_ids = Subquery(base_language_counts.distinct().values("id"))
+    base_language_qs = base_language_counts.distinct().values("id")
 
     # Scalable facet counts with 15-minute caching
     facet_cache_key = f"facets:{search_query}:g{','.join(sorted(genre_ids))}:l{','.join(sorted(language_ids))}"
@@ -80,14 +80,14 @@ def movie_list(request):
         genres_with_counts = list(Genre.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_genre_ids),
+                filter=Q(movies__id__in=base_genre_qs),
                 distinct=True,
             )
         ))
         languages_with_counts = list(Language.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_language_ids),
+                filter=Q(movies__id__in=base_language_qs),
                 distinct=True,
             )
         ))

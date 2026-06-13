@@ -117,7 +117,7 @@ class Movie(models.Model):
             return Movie._normalize_youtube_id(path_parts[2])
         return None
 
-    _YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+    _YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,12}$")
 
     @staticmethod
     def _normalize_youtube_id(value: str):
@@ -134,9 +134,9 @@ class Movie(models.Model):
     @property
     def image_url(self):
         try:
-            if self.image:
+            if self.image and hasattr(self.image, 'url'):
                 return self.image.url
-        except ValueError:
+        except (ValueError, AttributeError):
             pass
         return f"{settings.STATIC_URL}movies/placeholder.gif"
 

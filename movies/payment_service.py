@@ -122,10 +122,10 @@ def reserve_seats(user, seat_ids, theater_id, reservation_minutes=2):
         try:
             with transaction.atomic():
                 # Acquire row-level locks on Theater and Seats (no-op on SQLite, real row locks on Postgres).
-                theater = Theater.objects.select_for_update().get(id=theater_id)
+                theater = Theater.objects.select_for_update(of=('self',)).get(id=theater_id)
 
                 # Get seats with locks, excluding already booked and existing valid reservations
-                seats = Seat.objects.select_for_update().filter(
+                seats = Seat.objects.select_for_update(of=('self',)).filter(
                     id__in=seat_ids,
                     theater=theater,
                     is_booked=False,
@@ -226,11 +226,11 @@ def create_booking_with_payment_from_reservations(user, reservations, theater_id
     try:
         with transaction.atomic():
             # Acquire locks on theater
-            theater = Theater.objects.select_for_update().get(id=theater_id)
+            theater = Theater.objects.select_for_update(of=('self',)).get(id=theater_id)
 
             # Validate all reservations still exist and are valid
             reservation_ids = [r.id for r in reservations]
-            valid_reservations = SeatReservation.objects.select_for_update().filter(
+            valid_reservations = SeatReservation.objects.select_for_update(of=('self',)).filter(
                 id__in=reservation_ids,
                 user=user,
                 expires_at__gt=timezone.now(),
