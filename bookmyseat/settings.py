@@ -145,7 +145,10 @@ if use_remote_db and DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
+            # For serverless environments like Vercel, set conn_max_age to 0.
+            # This prevents the "Cannot assign requested address" error by ensuring
+            # each request gets a fresh connection managed by the Supabase pooler.
+            conn_max_age=0,
             ssl_require=True,
         )
     }
