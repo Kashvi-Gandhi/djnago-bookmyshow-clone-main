@@ -142,7 +142,7 @@
           <a href="{% url 'movie_detail' movie.id %}" class="text-decoration-none">
             {% if movie.image %}
             <img
-              src="{{ {{ movie.image_url }} }}"
+              src="{{ movie.image_url }}"
               class="card-img-top home-movie-img"
               alt="{{ movie.name }}"
             />
@@ -175,7 +175,7 @@
       <div class="col-md-4 col-sm-6 mb-4 d-flex">
         <div class="card h-100 shadow-sm w-100">
           {% if exp.image %}
-            <img src="{{ exp.image.url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
+            <img src="{{ exp.image_url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
           {% else %}
             <div class="card-img-top d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 200px;">No Image</div>
           {% endif %}
@@ -205,7 +205,7 @@
       <div class="col-md-4 col-sm-6 mb-4 d-flex">
         <div class="card h-100 shadow-sm w-100">
           {% if exp.image %}
-            <img src="{{ exp.image.url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
+            <img src="{{ exp.image_url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
           {% else %}
             <div class="card-img-top d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 200px;">No Image</div>
           {% endif %}
@@ -235,7 +235,7 @@
       <div class="col-md-4 col-sm-6 mb-4 d-flex">
         <div class="card h-100 shadow-sm w-100">
           {% if exp.image %}
-            <img src="{{ exp.image.url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
+            <img src="{{ exp.image_url }}" class="card-img-top" alt="{{ exp.name }}" style="height: 200px; object-fit: cover;">
           {% else %}
             <div class="card-img-top d-flex align-items-center justify-content-center bg-secondary text-white" style="height: 200px;">No Image</div>
           {% endif %}
@@ -415,7 +415,7 @@
 <ul>
     {% for movie in movies%}
     <li>
-        <img src="{{{{ movie.image_url }}}}" alt="image" >
+        <img src="{{ movie.image_url }}" alt="image" >
         <strong>{{movie.name}}</strong>{{movie.rating}}
         <p>Cast:{{movie.cast}}</p>
         <a href="{% url 'theater_list' movie.id %}">View Theaters</a>

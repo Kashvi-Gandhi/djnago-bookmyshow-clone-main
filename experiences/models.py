@@ -85,8 +85,11 @@ class Experience(models.Model):
 
     @property
     def image_url(self):
-        if self.image and hasattr(self.image, 'url'):
-            return self.image.url
+        try:
+            if self.image:
+                return self.image.url
+        except ValueError:
+            pass
         return f"{settings.STATIC_URL}movies/placeholder.gif"
 
     def clean(self):
