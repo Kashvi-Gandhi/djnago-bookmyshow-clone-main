@@ -1,9 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "bookmyseat/wsgi.py": {
-      "runtime": "python3.12"
-    }
+    "bookmyseat/wsgi.py": {}
   },
   "routes": [
     {
