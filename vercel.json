@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "description": "BookMySeat Django Deployment",
+  "functions": {
+    "bookmyseat/wsgi.py": {
+      "runtime": "@vercel/python"
+    }
+  },
   "routes": [
     {
       "src": "/static/(.*)",
