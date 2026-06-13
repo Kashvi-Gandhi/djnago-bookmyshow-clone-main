@@ -36,6 +36,10 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = ['.vercel.app', 'localhost', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = ['https://*.vercel.app']
 
+# This is required for Django to correctly identify that the request is secure (HTTPS)
+# when running behind Vercel's proxy. Without this, Login/Register POST requests
+# will likely fail with a 403 CSRF error.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 
@@ -129,18 +133,19 @@ WSGI_APPLICATION = 'bookmyseat.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 RUNNING_TESTS = 'test' in sys.argv
 
-use_remote_db = (
-    DATABASE_URL
-    and not RUNNING_TESTS  # Default to sqlite for tests unless explicitly overridden.
-    or os.environ.get('USE_DATABASE_URL_FOR_TESTS', 'false').lower() == 'true'
-)
+# Ensures Supabase is used in production (Vercel) but keeps SQLite for local tests
+use_remote_db = DATABASE_URL and not RUNNING_TESTS
 
 if use_remote_db and DATABASE_URL:
     DATABASES = {
+        # dj_database_url.config automatically parses the DATABASE_URL environment variable.
         'default': dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True,  # Render Postgres requires SSL; ensures psycopg2 uses sslmode=require
+            ssl_require=True,
+            # Explicitly set search_path to 'public' for Supabase
+            # This helps ensure Django looks for tables in the default schema
+            options='-c search_path=public',
         )
     }
 else:
