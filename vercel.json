@@ -11,7 +11,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "bookmyseat/wsgi.py"
+      "dest": "/bookmyseat/wsgi.py"
     }
   ]
 }

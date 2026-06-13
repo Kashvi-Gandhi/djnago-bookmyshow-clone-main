@@ -146,13 +146,15 @@ if use_remote_db and DATABASE_URL:
         'default': dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=0,
-            ssl_require=True,
+            # Ensure SSL is required for Supabase
+            ssl_require=os.environ.get('POSTGRES_REQUIRE_SSL', 'True').lower() == 'true',
         )
     }
-    # Ensure the public schema is always used for Supabase tables
-    DATABASES['default'].setdefault('OPTIONS', {})
-    DATABASES['default']['OPTIONS'].update({
-        'options': '-c search_path=public'
+    # PgBouncer/Supabase optimizations
+    DATABASES['default'].setdefault('OPTIONS', {}).update({
+        'options': '-c search_path=public',
+        # This helps with "Cannot assign requested address" errors in serverless
+        'connect_timeout': 10,
     })
 else:
     DATABASES = {
