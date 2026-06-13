@@ -83,6 +83,12 @@ class Experience(models.Model):
             return Experience._normalize_youtube_id(path_parts[2])
         return None
 
+    @property
+    def image_url(self):
+        if self.image and hasattr(self.image, 'url'):
+            return self.image.url
+        return f"{settings.STATIC_URL}movies/placeholder.gif"
+
     def clean(self):
         super().clean()
         if self.trailer_url:

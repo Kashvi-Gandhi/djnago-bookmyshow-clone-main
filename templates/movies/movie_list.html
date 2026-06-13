@@ -116,7 +116,7 @@
                     {% for movie in movies %}
                     <div class="col-12 col-sm-6 col-md-4 mb-4 d-flex">
                         <div class="card h-100 shadow-sm w-100">
-                            <img src="{% if movie.image %}{{ movie.image.url }}{% else %}https://via.placeholder.com/600x300?text=No+Image{% endif %}" class="card-img-top" alt="{{ movie.name }}" style="width: 100%; height: 240px; object-fit: cover;">
+                            <img src="{% if movie.image %}{{ {{ movie.image_url }} }}{% else %}https://via.placeholder.com/600x300?text=No+Image{% endif %}" class="card-img-top" alt="{{ movie.name }}" style="width: 100%; height: 240px; object-fit: cover;">
                             <div class="card-body">
                                 <h5 class="card-title mb-1">{{ movie.name }}</h5>
                                 <p class="card-text mb-1">

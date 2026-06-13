@@ -198,7 +198,7 @@
     <div class="row align-items-center">
       <div class="col-md-4 text-center">
         {% if movie.image %}
-          <img src="{{ movie.image.url }}" alt="{{ movie.name }} poster" class="movie-poster">
+          <img src="{{ {{ movie.image_url }} }}" alt="{{ movie.name }} poster" class="movie-poster">
         {% else %}
           <div class="movie-poster bg-secondary d-flex align-items-center justify-content-center text-white" style="height: 400px;">
             No Image
