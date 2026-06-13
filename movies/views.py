@@ -60,15 +60,16 @@ def movie_list(request):
     filtered_query = filtered_query.order_by(order_by, "id").distinct()
 
     # Live counts, excluding the facet being counted to show "what's available if you add this filter"
+    # We evaluate IDs to a list to avoid complex subqueries that crash some Postgres versions
     base_genre_counts = queryset
     if language_ids:
         base_genre_counts = base_genre_counts.filter(language_id__in=language_ids)
-    base_genre_qs = base_genre_counts.distinct().values("id")
+    base_genre_ids = list(base_genre_counts.distinct().values_list("id", flat=True))
 
     base_language_counts = queryset
     if genre_ids:
         base_language_counts = base_language_counts.filter(genres__id__in=genre_ids)
-    base_language_qs = base_language_counts.distinct().values("id")
+    base_language_ids = list(base_language_counts.distinct().values_list("id", flat=True))
 
     # Scalable facet counts with 15-minute caching
     facet_cache_key = f"facets:{search_query}:g{','.join(sorted(genre_ids))}:l{','.join(sorted(language_ids))}"
@@ -80,14 +81,14 @@ def movie_list(request):
         genres_with_counts = list(Genre.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_genre_qs),
+                filter=Q(movies__id__in=base_genre_ids),
                 distinct=True,
             )
         ))
         languages_with_counts = list(Language.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_language_qs),
+                filter=Q(movies__id__in=base_language_ids),
                 distinct=True,
             )
         ))

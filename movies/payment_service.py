@@ -124,14 +124,18 @@ def reserve_seats(user, seat_ids, theater_id, reservation_minutes=2):
                 # Acquire row-level locks on Theater and Seats (no-op on SQLite, real row locks on Postgres).
                 theater = Theater.objects.select_for_update(of=('self',)).get(id=theater_id)
 
-                # Get seats with locks, excluding already booked and existing valid reservations
+                # 1. Identify seats that already have an active reservation to avoid joining in the lock
+                active_reserved_ids = SeatReservation.objects.filter(
+                    seat__theater=theater,
+                    expires_at__gt=timezone.now()
+                ).values_list('seat_id', flat=True)
+
+                # 2. Lock and fetch only available seats without outer joins
                 seats = Seat.objects.select_for_update(of=('self',)).filter(
                     id__in=seat_ids,
                     theater=theater,
                     is_booked=False,
-                ).exclude(
-                    reservation__expires_at__gt=timezone.now()
-                )
+                ).exclude(id__in=active_reserved_ids)
 
                 # Verify all requested seats are available
                 if len(seats) != len(seat_ids):
