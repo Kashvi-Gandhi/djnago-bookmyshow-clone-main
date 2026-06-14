@@ -86,14 +86,13 @@ def movie_list(request):
         try:
             # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
             genre_counts_map = dict(
-                base_genre_counts.exclude(genres__isnull=True)
-                .values('genres')
+                base_genre_counts.values('genres')
                 .annotate(count=Count('id', distinct=True))
                 .values_list('genres', 'count')
             )
             lang_counts_map = dict(
                 base_language_counts.values('language')
-                .annotate(count=Count('id', distinct=True))
+                .annotate(count=Count('id'))
                 .values_list('language', 'count')
             )
 
