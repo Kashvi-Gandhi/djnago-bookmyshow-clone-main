@@ -74,28 +74,32 @@ def movie_list(request):
     if cached_facets:
         genres_with_counts, languages_with_counts = cached_facets
     else:
-        # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
-        genre_counts_map = dict(
-            base_genre_counts.exclude(genres__isnull=True)
-            .values('genres')
-            .annotate(count=Count('id', distinct=True))
-            .values_list('genres', 'count')
-        )
-        lang_counts_map = dict(
-            base_language_counts.values('language')
-            .annotate(count=Count('id', distinct=True))
-            .values_list('language', 'count')
-        )
+        try:
+            # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
+            genre_counts_map = dict(
+                base_genre_counts.exclude(genres__isnull=True)
+                .values('genres')
+                .annotate(count=Count('id', distinct=True))
+                .values_list('genres', 'count')
+            )
+            lang_counts_map = dict(
+                base_language_counts.values('language')
+                .annotate(count=Count('id', distinct=True))
+                .values_list('language', 'count')
+            )
 
-        genres_with_counts = list(Genre.objects.all())
-        for g in genres_with_counts:
-            g.filtered_count = genre_counts_map.get(g.id, 0)
+            genres_with_counts = list(Genre.objects.all())
+            for g in genres_with_counts:
+                g.filtered_count = genre_counts_map.get(g.id, 0)
 
-        languages_with_counts = list(Language.objects.all())
-        for l in languages_with_counts:
-            l.filtered_count = lang_counts_map.get(l.id, 0)
+            languages_with_counts = list(Language.objects.all())
+            for l in languages_with_counts:
+                l.filtered_count = lang_counts_map.get(l.id, 0)
 
-        cache.set(facet_cache_key, (genres_with_counts, languages_with_counts), 900)
+            cache.set(facet_cache_key, (genres_with_counts, languages_with_counts), 900)
+        except Exception as e:
+            logger.error(f"Facet counting failed: {e}", exc_info=True)
+            genres_with_counts, languages_with_counts = list(Genre.objects.all()), list(Language.objects.all())
 
     explain_plan = None
     if settings.DEBUG and request.GET.get("explain"):

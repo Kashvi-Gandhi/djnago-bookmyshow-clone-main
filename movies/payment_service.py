@@ -583,7 +583,7 @@ def _send_confirmation_emails_now(booking_ids):
     If sending fails for any reason (SMTP/auth/etc), we enqueue the email so it
     can still be retried later with `manage.py process_email_queue`.
     """
-    from django.core.mail import EmailMultiAlternatives
+    from django.core.mail import EmailMultiAlternatives, get_connection
     from django.template.loader import render_to_string
 
     bookings = list(
@@ -598,55 +598,67 @@ def _send_confirmation_emails_now(booking_ids):
         key = (booking.user_id, booking.movie_id, booking.theater_id, booking.payment_id)
         grouped.setdefault(key, []).append(booking)
 
-    for (_user_id, _movie_id, _theater_id, payment_id), group_bookings in grouped.items():
-        first = group_bookings[0]
-        seat_numbers = [b.seat.seat_number for b in group_bookings]
-        context = {
-            "user": {
-                "username": first.user.username,
-                "email": first.user.email,
-            },
-            "movie": {
-                "name": first.movie.name,
-            },
-            "theater": {
-                "name": first.theater.name,
-            },
-            "seats": seat_numbers,
-            "payment_ids": [payment_id],
-            "show_time": first.theater.time.isoformat(),
-            "booked_at": min(b.booked_at for b in group_bookings).isoformat(),
-        }
+    if not grouped:
+        return
 
-        subject = f"Your tickets for {first.movie.name}"
-        try:
-            txt_body = render_to_string("emails/booking_confirmation.txt", context)
-            html_body = render_to_string("emails/booking_confirmation.html", context)
-            msg = EmailMultiAlternatives(subject, txt_body, settings.DEFAULT_FROM_EMAIL, [first.user.email])
-            msg.attach_alternative(html_body, "text/html")
-            msg.send(fail_silently=False)
-            logger.info("Sent booking confirmation email to %s (payment_id=%s)", first.user.email, payment_id)
-        except Exception as exc:
-            logger.error(
-                "CRITICAL EMAIL FAILURE: Failed to send to %s for payment %s. "
-                "Reason: %s. Check Vercel Env Vars: EMAIL_PORT (use 2525) and EMAIL_HOST.",
-                first.user.email,
-                payment_id,
-                str(exc),
-                exc_info=True
-            )
-            # Best-effort fallback for later retries.
+    # Persistent connection to reduce SMTP handshake overhead on Vercel
+    connection = get_connection()
+    try:
+        connection.open()
+        for (_user_id, _movie_id, _theater_id, payment_id), group_bookings in grouped.items():
+            first = group_bookings[0]
+            seat_numbers = [b.seat.seat_number for b in group_bookings]
+            context = {
+                "user": {
+                    "username": first.user.username,
+                    "email": first.user.email,
+                },
+                "movie": {
+                    "name": first.movie.name,
+                },
+                "theater": {
+                    "name": first.theater.name,
+                },
+                "seats": seat_numbers,
+                "payment_ids": [payment_id],
+                "show_time": first.theater.time.isoformat(),
+                "booked_at": min(b.booked_at for b in group_bookings).isoformat(),
+            }
+
+            subject = f"Your tickets for {first.movie.name}"
             try:
-                from .models import EmailQueue
-
-                EmailQueue.objects.create(
-                    to_email=first.user.email,
-                    subject=subject,
-                    template="emails/booking_confirmation",
-                    context=context,
+                txt_body = render_to_string("emails/booking_confirmation.txt", context)
+                html_body = render_to_string("emails/booking_confirmation.html", context)
+                msg = EmailMultiAlternatives(
+                    subject, txt_body, settings.DEFAULT_FROM_EMAIL, [first.user.email],
+                    connection=connection
                 )
+                msg.attach_alternative(html_body, "text/html")
+                msg.send(fail_silently=False)
+                logger.info("Sent booking confirmation email to %s (payment_id=%s)", first.user.email, payment_id)
             except Exception:
-                logger.exception("Failed to enqueue booking email after send failure (payment_id=%s)", payment_id)
+                logger.error(
+                    "CRITICAL EMAIL FAILURE: Failed to send to %s for payment %s. "
+                    "Reason: %s. Check Vercel Env Vars: EMAIL_PORT (use 2525) and EMAIL_HOST.",
+                    first.user.email,
+                    payment_id,
+                    str(exc),
+                    exc_info=True
+                )
+                # Best-effort fallback for later retries.
+                try:
+                    from .models import EmailQueue
+
+                    EmailQueue.objects.create(
+                        to_email=first.user.email,
+                        subject=subject,
+                        template="emails/booking_confirmation",
+                        context=context,
+                    )
+                except Exception:
+                    logger.exception("Failed to enqueue booking email after send failure (payment_id=%s)", payment_id)
+    finally:
+        connection.close()
 
 def cleanup_expired_reservations():
     """
