@@ -626,12 +626,13 @@ def _send_confirmation_emails_now(booking_ids):
             msg.attach_alternative(html_body, "text/html")
             msg.send(fail_silently=False)
             logger.info("Sent booking confirmation email to %s (payment_id=%s)", first.user.email, payment_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
-                "Immediate booking email failed for %s (payment_id=%s): %s",
+                "Vercel Email Delivery Error: Failed to send to %s for payment %s. Error: %s",
                 first.user.email,
                 payment_id,
                 str(exc),
+                exc_info=True
             )
             # Best-effort fallback for later retries.
             try:

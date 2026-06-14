@@ -60,16 +60,13 @@ def movie_list(request):
     filtered_query = filtered_query.order_by(order_by, "id").distinct()
 
     # Live counts, excluding the facet being counted to show "what's available if you add this filter"
-    # We evaluate IDs to a list to avoid complex subqueries that crash some Postgres versions
     base_genre_counts = queryset
     if language_ids:
         base_genre_counts = base_genre_counts.filter(language_id__in=language_ids)
-    base_genre_ids = list(base_genre_counts.distinct().values_list("id", flat=True))
 
     base_language_counts = queryset
     if genre_ids:
         base_language_counts = base_language_counts.filter(genres__id__in=genre_ids)
-    base_language_ids = list(base_language_counts.distinct().values_list("id", flat=True))
 
     # Scalable facet counts with 15-minute caching
     facet_cache_key = f"facets:{search_query}:g{','.join(sorted(genre_ids))}:l{','.join(sorted(language_ids))}"
@@ -81,14 +78,14 @@ def movie_list(request):
         genres_with_counts = list(Genre.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_genre_ids),
+                filter=Q(movies__in=base_genre_counts),
                 distinct=True,
             )
         ))
         languages_with_counts = list(Language.objects.annotate(
             filtered_count=Count(
                 "movies",
-                filter=Q(movies__id__in=base_language_ids),
+                filter=Q(movies__in=base_language_counts),
                 distinct=True,
             )
         ))
@@ -185,8 +182,15 @@ def _trailer_context(movie):
     watch_url = getattr(movie, "trailer_watch_url", None)
 
     if embed_url:
-        allowed_prefix = embed_url.split("?", 1)[0]
-        allowed_prefix = allowed_prefix.rsplit("/", 1)[0] + "/"
+        # Safely determine the allowed prefix for the template/CSP logic
+        allowed_prefix = "https://www.youtube-nocookie.com/embed/"
+        if "?" in embed_url:
+            parts = embed_url.split("?", 1)[0].rsplit("/", 1)
+            if len(parts) > 1:
+                allowed_prefix = parts[0] + "/"
+        elif "/" in embed_url:
+            allowed_prefix = embed_url.rsplit("/", 1)[0] + "/"
+            
         return {
             "trailer_embed_url": embed_url,
             "trailer_poster_url": poster_url,
@@ -210,18 +214,22 @@ def _trailer_context(movie):
     if not cached:
         return {"trailer_embed_url": None, "trailer_poster_url": None}
 
-    embed_base = (getattr(settings, "YOUTUBE_EMBED_BASE", "") or "").strip()
-    if not embed_base:
-        embed_base = "https://www.youtube-nocookie.com/embed/"
+    embed_base = (getattr(settings, "YOUTUBE_EMBED_BASE", "https://www.youtube-nocookie.com/embed/") or "").strip()
     if not embed_base.endswith("/"):
         embed_base += "/"
 
     embed_url = f"{embed_base}{cached}?rel=0&modestbranding=1"
+
+    try:
+        allowed_prefix = embed_url.split("?", 1)[0].rsplit("/", 1)[0] + "/"
+    except (IndexError, AttributeError):
+        allowed_prefix = "https://www.youtube-nocookie.com/embed/"
+
     return {
         "trailer_embed_url": embed_url,
         "trailer_poster_url": f"https://i.ytimg.com/vi/{cached}/hqdefault.jpg",
         "trailer_watch_url": f"https://www.youtube.com/watch?v={cached}",
-        "trailer_embed_allowed_prefix": embed_url.split("?", 1)[0].rsplit("/", 1)[0] + "/",
+        "trailer_embed_allowed_prefix": allowed_prefix,
     }
 
 
