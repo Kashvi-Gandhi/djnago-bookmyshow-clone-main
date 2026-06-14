@@ -138,10 +138,10 @@ WSGI_APPLICATION = 'bookmyseat.wsgi.application'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 RUNNING_TESTS = 'test' in sys.argv
 
-# Ensures Supabase is used in production (Vercel) but keeps SQLite for local tests
-use_remote_db = DATABASE_URL and not RUNNING_TESTS
+# Ensures a valid remote URL is used (contains ://) and not during tests.
+use_remote_db = DATABASE_URL and '://' in DATABASE_URL and not RUNNING_TESTS
 
-if use_remote_db and DATABASE_URL:
+if use_remote_db:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,

@@ -59,14 +59,13 @@ def movie_list(request):
     order_by = sort_options.get(sort_param, "name")
     filtered_query = filtered_query.order_by(order_by, "id").distinct()
 
-    # Live counts, excluding the facet being counted to show "what's available if you add this filter"
-    base_genre_counts = queryset
-    if language_ids:
-        base_genre_counts = base_genre_counts.filter(language_id__in=language_ids)
+    # Start from a clean queryset for facet counts to avoid bloating subquery SQL
+    base_counts_qs = Movie.objects.all()
+    if search_query:
+        base_counts_qs = base_counts_qs.filter(name__istartswith=search_query)
 
-    base_language_counts = queryset
-    if genre_ids:
-        base_language_counts = base_language_counts.filter(genres__id__in=genre_ids)
+    base_genre_counts = base_counts_qs.filter(language_id__in=language_ids) if language_ids else base_counts_qs
+    base_language_counts = base_counts_qs.filter(genres__id__in=genre_ids) if genre_ids else base_counts_qs
 
     # Scalable facet counts with 15-minute caching
     facet_cache_key = f"facets:{search_query}:g{','.join(sorted(genre_ids))}:l{','.join(sorted(language_ids))}"

@@ -627,8 +627,9 @@ def _send_confirmation_emails_now(booking_ids):
             msg.send(fail_silently=False)
             logger.info("Sent booking confirmation email to %s (payment_id=%s)", first.user.email, payment_id)
         except Exception as exc:
-            logger.warning(
-                "Vercel Email Delivery Error: Failed to send to %s for payment %s. Error: %s",
+            logger.error(
+                "CRITICAL EMAIL FAILURE: Failed to send to %s for payment %s. "
+                "Reason: %s. Check Vercel Env Vars: EMAIL_PORT (use 2525) and EMAIL_HOST.",
                 first.user.email,
                 payment_id,
                 str(exc),
