@@ -57,7 +57,7 @@ def movie_list(request):
         "rating_asc": "rating",
     }
     order_by = sort_options.get(sort_param, "name")
-    filtered_query = filtered_query.order_by(order_by, "id").distinct()
+    filtered_query = filtered_query.order_by(order_by, "id")
 
     # Start from a clean queryset for facet counts to avoid bloating subquery SQL
     base_counts_qs = Movie.objects.all()
@@ -115,18 +115,25 @@ def movie_list(request):
     if use_keyset:
         # Keyset pagination to avoid deep OFFSET scans when catalogs grow.
         order_field = order_by.lstrip("-")
+        field_type = Movie._meta.get_field(order_field).get_internal_type()
         descending = order_by.startswith("-")
         ordering = [order_by, "-id" if descending else "id"]
-        keyset_qs = filtered_query.order_by(*ordering)
+        keyset_qs = filtered_query.distinct().order_by(*ordering)
         if cursor:
             try:
                 cursor_val, cursor_id = cursor.split("|", 1)
                 cursor_id = int(cursor_id)
+                # Cast cursor_val based on field type to prevent DB type errors
+                if cursor_val == "None":
+                    cursor_val = None
+                elif field_type in ["IntegerField", "FloatField", "DecimalField"]:
+                    cursor_val = float(cursor_val)
+                
                 comp = "lt" if descending else "gt"
                 filters = Q(**{f"{order_field}__{comp}": cursor_val})
                 filters |= Q(**{order_field: cursor_val, f"id__{comp}": cursor_id})
                 keyset_qs = keyset_qs.filter(filters)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
         movies_slice = list(keyset_qs[: per_page + 1])
         has_next = len(movies_slice) > per_page
@@ -136,7 +143,7 @@ def movie_list(request):
             last_val = getattr(last, order_field)
             next_cursor = f"{last_val}|{last.id}"
     else:
-        paginator = Paginator(filtered_query, per_page)
+        paginator = Paginator(filtered_query.distinct(), per_page)
         page_number = request.GET.get("page", 1)
         try:
             page_obj = paginator.page(page_number)

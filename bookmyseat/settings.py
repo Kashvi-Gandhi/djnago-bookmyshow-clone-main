@@ -147,11 +147,12 @@ if use_remote_db:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=0,
+            conn_max_age=int(os.environ.get('CONN_MAX_AGE', 0)),
             # Ensure SSL is required for Supabase
             ssl_require=os.environ.get('POSTGRES_REQUIRE_SSL', 'True').lower() == 'true',
         )
     }
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     # PgBouncer/Supabase optimizations and cleanup
     db_config = DATABASES['default']
     options = db_config.setdefault('OPTIONS', {})
@@ -163,8 +164,6 @@ if use_remote_db:
         'options': '-c search_path=public',
         'connect_timeout': 10,
     })
-    # Correct Django configuration for PgBouncer Transaction Mode
-    db_config['DISABLE_SERVER_SIDE_CURSORS'] = True
 else:
     DATABASES = {
         'default': {

@@ -31,6 +31,7 @@ class Command(BaseCommand):
             if not password:
                 # Generate a secure password if user leaves blank
                 password = secrets.token_urlsafe(16)
+                self.stdout.write(self.style.WARNING(f'No password provided, generated a secure one: {password}'))
 
         if User.objects.filter(username=username).exists():
             user = User.objects.get(username=username)
