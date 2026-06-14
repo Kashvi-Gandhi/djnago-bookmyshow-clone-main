@@ -99,7 +99,10 @@ def movie_list(request):
             cache.set(facet_cache_key, (genres_with_counts, languages_with_counts), 900)
         except Exception as e:
             logger.error(f"Facet counting failed: {e}", exc_info=True)
-            genres_with_counts, languages_with_counts = list(Genre.objects.all()), list(Language.objects.all())
+            try:
+                genres_with_counts, languages_with_counts = list(Genre.objects.all()), list(Language.objects.all())
+            except Exception:
+                genres_with_counts, languages_with_counts = [], []
 
     explain_plan = None
     if settings.DEBUG and request.GET.get("explain"):
@@ -143,14 +146,17 @@ def movie_list(request):
             last_val = getattr(last, order_field)
             next_cursor = f"{last_val}|{last.id}"
     else:
-        paginator = Paginator(filtered_query.distinct(), per_page)
-        page_number = request.GET.get("page", 1)
         try:
+            paginator = Paginator(filtered_query.distinct(), per_page)
+            page_number = request.GET.get("page", 1)
             page_obj = paginator.page(page_number)
         except PageNotAnInteger:
             page_obj = paginator.page(1)
         except EmptyPage:
             page_obj = paginator.page(paginator.num_pages)
+        except Exception as e:
+            logger.error(f"Pagination failed: {e}", exc_info=True)
+            page_obj = None
 
     preserved_query = request.GET.copy()
     preserved_query.pop("page", None)

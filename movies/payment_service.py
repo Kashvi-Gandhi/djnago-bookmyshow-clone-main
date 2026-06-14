@@ -640,8 +640,8 @@ def _send_confirmation_emails_now(booking_ids):
                     logger.info("Sent booking confirmation email to %s (payment_id=%s)", email, payment_id)
             except Exception as exc:
                 logger.error(
-                    "SMTP FAILURE: %s. Check Vercel Env Vars (EMAIL_HOST, EMAIL_PORT=2525, etc). Enqueueing for retry.",
-                    str(exc), exc_info=True
+                    "SMTP FAILURE: %s. Ensure Sender Email (%s) is VERIFIED in SendGrid Dashboard.",
+                    str(exc), settings.DEFAULT_FROM_EMAIL, exc_info=True
                 )
                 # Fallback: Enqueue all emails from the failed batch
                 from .models import EmailQueue
