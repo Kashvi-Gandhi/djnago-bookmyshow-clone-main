@@ -32,7 +32,7 @@ if not SECRET_KEY:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default to debug-on for local runs; set DJANGO_DEBUG=false in production.
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ['.vercel.app', 'localhost', '127.0.0.1']
 CSRF_TRUSTED_ORIGINS = ['https://*.vercel.app']
@@ -141,15 +141,7 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 RUNNING_TESTS = 'test' in sys.argv
 
 # Ensures a valid remote URL is used (contains ://) and not during tests.
-use_remote_db = DATABASE_URL and '://' in DATABASE_URL and not RUNNING_TESTS
-
-if use_remote_db and not RUNNING_TESTS:
-    try:
-        from urllib.parse import urlparse
-        db_host = urlparse(DATABASE_URL).hostname
-        print(f"DATABASE_CONNECTION: Connecting to remote host -> {db_host}")
-    except Exception:
-        pass
+use_remote_db = DATABASE_URL and DATABASE_URL.startswith(('postgres://', 'postgresql://')) and not RUNNING_TESTS
 
 if use_remote_db:
     DATABASES = {

@@ -37,22 +37,20 @@ def movie_list(request):
     per_page = max(6, min(per_page, 48))
     cursor = request.GET.get("cursor")
 
-    # Simplify initial queryset for counts
+    # Start with a base queryset. We'll add select_related/prefetch_related later
+    # to ensure filters are applied correctly to the core model first.
     queryset = Movie.objects.all()
-    
-    # For the actual results, we include relations
-    results_qs = queryset.select_related("language").prefetch_related("genres")
 
     if search_query:
         # Use prefix search to stay sargable on the (name) index.
         queryset = queryset.filter(name__istartswith=search_query)
 
-    base_for_results = queryset
     if language_ids:
-        results_qs = results_qs.filter(language_id__in=language_ids)
-    filtered_query = results_qs
+        queryset = queryset.filter(language_id__in=language_ids)
+
+    filtered_query = queryset
     if genre_ids:
-        filtered_query = filtered_query.filter(genres__in=genre_ids)
+        filtered_query = filtered_query.filter(genres__id__in=genre_ids)
 
     sort_options = {
         "name_asc": "name",
@@ -61,7 +59,10 @@ def movie_list(request):
         "rating_asc": "rating",
     }
     order_by = sort_options.get(sort_param, "name")
-    filtered_query = filtered_query.distinct().order_by(order_by, "id")
+
+    # Apply distinct and ordering, then attach relations for the final results.
+    # This prevents duplicates from the Genre M2M join.
+    filtered_query = filtered_query.distinct().order_by(order_by, "id").select_related("language").prefetch_related("genres")
 
     # Start from a clean queryset for facet counts to avoid bloating subquery SQL
     base_counts_qs = Movie.objects.all()
