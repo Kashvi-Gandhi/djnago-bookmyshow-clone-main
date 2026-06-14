@@ -74,20 +74,27 @@ def movie_list(request):
     if cached_facets:
         genres_with_counts, languages_with_counts = cached_facets
     else:
-        genres_with_counts = list(Genre.objects.annotate(
-            filtered_count=Count(
-                "movies",
-                filter=Q(movies__in=base_genre_counts),
-                distinct=True,
-            )
-        ))
-        languages_with_counts = list(Language.objects.annotate(
-            filtered_count=Count(
-                "movies",
-                filter=Q(movies__in=base_language_counts),
-                distinct=True,
-            )
-        ))
+        # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
+        genre_counts_map = dict(
+            base_genre_counts.exclude(genres__isnull=True)
+            .values('genres')
+            .annotate(count=Count('id', distinct=True))
+            .values_list('genres', 'count')
+        )
+        lang_counts_map = dict(
+            base_language_counts.values('language')
+            .annotate(count=Count('id', distinct=True))
+            .values_list('language', 'count')
+        )
+
+        genres_with_counts = list(Genre.objects.all())
+        for g in genres_with_counts:
+            g.filtered_count = genre_counts_map.get(g.id, 0)
+
+        languages_with_counts = list(Language.objects.all())
+        for l in languages_with_counts:
+            l.filtered_count = lang_counts_map.get(l.id, 0)
+
         cache.set(facet_cache_key, (genres_with_counts, languages_with_counts), 900)
 
     explain_plan = None
