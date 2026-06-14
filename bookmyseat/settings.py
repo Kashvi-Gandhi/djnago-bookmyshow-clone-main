@@ -217,7 +217,8 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Caching Configuration
-if os.environ.get('REDIS_URL'):
+REDIS_URL = os.environ.get('REDIS_URL')
+if REDIS_URL and REDIS_URL.startswith('redis://'):
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
