@@ -78,10 +78,10 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@example.com")
 EMAIL_TIMEOUT = 10  # Seconds to wait for SMTP server response
-
-# If secure SMTP settings are provided, switch backend automatically.
-if EMAIL_HOST:
-    EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+ 
+# If EMAIL_HOST is provided, assume SMTP backend unless explicitly overridden
+if EMAIL_HOST and not os.getenv("EMAIL_BACKEND"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 # Stripe Payment Settings
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "").strip()
@@ -142,6 +142,14 @@ RUNNING_TESTS = 'test' in sys.argv
 
 # Ensures a valid remote URL is used (contains ://) and not during tests.
 use_remote_db = DATABASE_URL and '://' in DATABASE_URL and not RUNNING_TESTS
+
+if use_remote_db and not RUNNING_TESTS:
+    try:
+        from urllib.parse import urlparse
+        db_host = urlparse(DATABASE_URL).hostname
+        print(f"DATABASE_CONNECTION: Connecting to remote host -> {db_host}")
+    except Exception:
+        pass
 
 if use_remote_db:
     DATABASES = {

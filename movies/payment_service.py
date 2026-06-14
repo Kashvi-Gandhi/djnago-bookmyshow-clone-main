@@ -640,7 +640,7 @@ def _send_confirmation_emails_now(booking_ids):
                     logger.info("Sent booking confirmation email to %s (payment_id=%s)", email, payment_id)
             except Exception as exc:
                 logger.error(
-                    "SMTP FAILURE: %s. Ensure Sender Email (%s) is VERIFIED in SendGrid Dashboard.",
+                    "SMTP FAILURE: %s. Ensure Sender Email '%s' is VERIFIED in SendGrid Dashboard and API Key has Mail Send permissions.",
                     str(exc), settings.DEFAULT_FROM_EMAIL, exc_info=True
                 )
                 # Fallback: Enqueue all emails from the failed batch
