@@ -156,7 +156,10 @@ def movie_list(request):
             page_obj = paginator.page(paginator.num_pages)
         except Exception as e:
             logger.error(f"Pagination failed: {e}", exc_info=True)
-            page_obj = None
+            # Fallback to an empty list if pagination fails completely
+            # This prevents template errors if page_obj is None
+            page_obj = Paginator([], per_page).page(1)
+            movies_page = [] # Ensure movies_page is also empty for keyset fallback
 
     preserved_query = request.GET.copy()
     preserved_query.pop("page", None)
