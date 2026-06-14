@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -50,7 +51,9 @@ def movie_list(request):
 
     filtered_query = queryset
     if genre_ids:
-        filtered_query = filtered_query.filter(genres__id__in=genre_ids)
+        # Use a subquery to find valid movie IDs. This avoids a JOIN in the main query,
+        # which prevents duplicate rows and eliminates the need for .distinct()
+        filtered_query = filtered_query.filter(id__in=Movie.objects.filter(genres__id__in=genre_ids).values('id'))
 
     sort_options = {
         "name_asc": "name",
@@ -62,7 +65,8 @@ def movie_list(request):
 
     # Apply distinct and ordering, then attach relations for the final results.
     # This prevents duplicates from the Genre M2M join.
-    filtered_query = filtered_query.distinct().order_by(order_by, "id").select_related("language").prefetch_related("genres")
+    # We remove .distinct() here because the subquery above handles uniqueness.
+    filtered_query = filtered_query.order_by(order_by, "id").select_related("language").prefetch_related("genres")
 
     # Start from a clean queryset for facet counts to avoid bloating subquery SQL
     base_counts_qs = Movie.objects.all()
@@ -132,11 +136,16 @@ def movie_list(request):
                 cursor_val, cursor_id = cursor.split("|", 1)
                 cursor_id = int(cursor_id)
                 # Cast cursor_val based on field type to prevent DB type errors
-                if cursor_val == "None":
+                if cursor_val == "None" or cursor_val == "":
                     cursor_val = None
-                elif field_type in ["IntegerField", "FloatField", "DecimalField"]:
+                elif field_type == "DecimalField":
+                    try:
+                        cursor_val = Decimal(cursor_val)
+                    except (InvalidOperation, TypeError):
+                        cursor_val = Decimal("0.0")
+                elif field_type in ["IntegerField", "FloatField"]:
                     cursor_val = float(cursor_val)
-                
+
                 comp = "lt" if descending else "gt"
                 filters = Q(**{f"{order_field}__{comp}": cursor_val})
                 filters |= Q(**{order_field: cursor_val, f"id__{comp}": cursor_id})
