@@ -606,6 +606,12 @@ def _send_confirmation_emails_now(booking_ids):
     messages = []
     email_meta = []  # To track what to enqueue if sending fails
 
+    if not settings.EMAIL_HOST:
+        logger.error("SMTP NOT CONFIGURED: EMAIL_HOST is missing. Emails will not be sent.")
+        # Fallback to enqueueing
+        _enqueue_confirmation_emails(booking_ids)
+        return
+
     try:
         for (_user_id, _movie_id, _theater_id, payment_id), group_bookings in grouped.items():
             first = group_bookings[0]

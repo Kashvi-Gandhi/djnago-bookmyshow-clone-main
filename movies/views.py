@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from time import perf_counter
 from django.contrib.admin.views.decorators import staff_member_required
 
-from .models import Booking, Genre, Language, Movie, Seat, Theater, SeatReservation
+from .models import Booking, Genre, Language, Movie, Seat, Theater, SeatReservation, AdminUser
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("movies.perf")
@@ -84,16 +84,11 @@ def movie_list(request):
     else:
         try:
             # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
-            genre_counts_map = dict(
-                base_genre_counts.exclude(genres__isnull=True).values_list('genres')
-                .annotate(count=Count('id', distinct=True))
-                .order_by()
-            )
-            lang_counts_map = dict(
-                base_language_counts.values_list('language_id')
-                .annotate(count=Count('id', distinct=True))
-                .order_by()
-            )
+            genre_counts = base_genre_counts.values('genres').annotate(count=Count('id', distinct=True)).order_by()
+            genre_counts_map = {item['genres']: item['count'] for item in genre_counts if item['genres'] is not None}
+
+            lang_counts = base_language_counts.values('language_id').annotate(count=Count('id', distinct=True)).order_by()
+            lang_counts_map = {item['language_id']: item['count'] for item in lang_counts if item['language_id'] is not None}
 
             genres_with_counts = list(Genre.objects.all())
             for g in genres_with_counts:
@@ -118,12 +113,11 @@ def movie_list(request):
         logger.info("movie_list EXPLAIN\n%s", explain_plan)
 
     page_obj = None
-    movies_page = None
+    movies_page = []
     next_cursor = None
     has_next = False
 
     if use_keyset:
-        # Keyset pagination to avoid deep OFFSET scans when catalogs grow.
         order_field = order_by.lstrip("-")
         field_type = Movie._meta.get_field(order_field).get_internal_type()
         descending = order_by.startswith("-")
@@ -160,7 +154,7 @@ def movie_list(request):
     else:
         try:
             paginator = Paginator(filtered_query, per_page)
-            page_number = request.GET.get("page", 1)
+            page_number = request.GET.get("page")
             page_obj = paginator.page(page_number)
         except PageNotAnInteger:
             page_obj = paginator.page(1)
