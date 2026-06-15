@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from time import perf_counter
 from django.contrib.admin.views.decorators import staff_member_required
 
-from .models import Booking, Genre, Language, Movie, Seat, Theater, SeatReservation, AdminUser
+from .models import Booking, Genre, Language, Movie, Seat, Theater, SeatReservation
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("movies.perf")
