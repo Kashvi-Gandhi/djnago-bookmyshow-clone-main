@@ -69,7 +69,7 @@ MIDDLEWARE = [
 ]
 
 AUTH_USER_MODEL='auth.User'
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend" if os.getenv("EMAIL_HOST") else "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "2525"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
@@ -78,10 +78,6 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yourdomain.com")
 EMAIL_TIMEOUT = 10  # Seconds to wait for SMTP server response
-
-# Ensure SMTP is used in production if the host is provided
-if EMAIL_HOST and not os.getenv("EMAIL_BACKEND"):
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 # Stripe Payment Settings
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "").strip()
