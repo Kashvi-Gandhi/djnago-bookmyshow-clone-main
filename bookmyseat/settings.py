@@ -75,9 +75,17 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", "2525"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").strip()
 
-# Logic to prevent SSL/TLS conflicts: 2525/587 use TLS, 465 uses SSL.
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True" if EMAIL_PORT in [587, 2525] else "False").lower() == "true"
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True" if EMAIL_PORT == 465 else "False").lower() == "true"
+# Robust SSL/TLS configuration for SMTP providers like SendGrid.
+# Ports 587 and 2525 use Explicit TLS (STARTTLS).
+# Port 465 uses Implicit SSL.
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", str(EMAIL_PORT != 465)).lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", str(EMAIL_PORT == 465)).lower() == "true"
+
+# Force mutually exclusive flags based on port to avoid misconfiguration errors like [SSL: WRONG_VERSION_NUMBER]
+if EMAIL_PORT == 465:
+    EMAIL_USE_TLS = False
+elif EMAIL_PORT in [587, 2525]:
+    EMAIL_USE_SSL = False
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yourdomain.com").strip()
 EMAIL_TIMEOUT = 10  # Seconds to wait for SMTP server response
