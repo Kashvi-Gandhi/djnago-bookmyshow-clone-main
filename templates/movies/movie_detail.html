@@ -197,16 +197,8 @@
   <div class="container">
     <div class="row align-items-center">
       <div class="col-md-4 text-center">
-        {% comment %} The movie.image_url property already handles the placeholder logic, so a direct call is sufficient. {% endcomment %}
+        {# The image_url property handles placeholder logic automatically #}
         <img src="{{ movie.image_url }}" alt="{{ movie.name }} poster" class="movie-poster">
-        {% comment %} Original conditional check removed as movie.image_url handles it {% endcomment %}
-        {% comment %} {% if movie.image %} {% endcomment %}
-          {% comment %} <img src="{{ movie.image_url }}" alt="{{ movie.name }} poster" class="movie-poster"> {% endcomment %}
-        {% comment %} {% else %} {% endcomment %}
-          <div class="movie-poster bg-secondary d-flex align-items-center justify-content-center text-white" style="height: 400px;">
-            No Image
-          </div>
-        {% endif %}
       </div>
       <div class="col-md-8 movie-info">
         <h1 class="movie-title">{{ movie.name }}</h1>
