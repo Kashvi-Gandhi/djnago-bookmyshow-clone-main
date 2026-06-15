@@ -72,11 +72,11 @@ AUTH_USER_MODEL='auth.User'
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend" if os.getenv("EMAIL_HOST") else "django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "2525"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").strip()
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True" if EMAIL_PORT in [587, 2525] else "False").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "True" if EMAIL_PORT == 465 else "False").lower() == "true"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yourdomain.com")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yourdomain.com").strip()
 EMAIL_TIMEOUT = 10  # Seconds to wait for SMTP server response
 
 # Stripe Payment Settings
@@ -133,7 +133,7 @@ WSGI_APPLICATION = 'bookmyseat.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 RUNNING_TESTS = 'test' in sys.argv
 
 # Ensures a valid remote URL is used (contains ://) and not during tests.
