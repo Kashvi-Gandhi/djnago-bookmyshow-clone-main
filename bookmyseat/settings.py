@@ -76,10 +76,10 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() == "true"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "no-reply@example.com")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@yourdomain.com")
 EMAIL_TIMEOUT = 10  # Seconds to wait for SMTP server response
- 
-# If EMAIL_HOST is provided, assume SMTP backend unless explicitly overridden
+
+# Ensure SMTP is used in production if the host is provided
 if EMAIL_HOST and not os.getenv("EMAIL_BACKEND"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
@@ -255,6 +255,12 @@ LOGGING = {
         },
     },
     'loggers': {
+        # Catch all Django errors and output to Vercel console
+        'django': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
         # Surface email sending failures and queue processing issues.
         'movies.management.commands.process_email_queue': {
             'handlers': ['console'],
@@ -266,6 +272,11 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
+        },
+        # Ensure all app-level errors are logged to the console for Vercel
+        'movies': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
         },
         'django.request': {
             'handlers': ['console'],

@@ -18,7 +18,6 @@ from time import perf_counter
 from django.contrib.admin.views.decorators import staff_member_required
 
 from .models import Booking, EmailQueue, Genre, Language, Movie, Seat, Theater, SeatReservation, AdminUser
-from .analytics_service import AnalyticsService
 
 logger = logging.getLogger(__name__)
 perf_logger = logging.getLogger("movies.perf")
@@ -86,13 +85,13 @@ def movie_list(request):
         try:
             # Optimized facet counting: Aggregate from the Movie side to avoid heavy subqueries
             genre_counts_map = dict(
-                base_genre_counts.values('genres')
+                base_genre_counts.exclude(genres__isnull=True).values_list('genres', flat=False)
                 .annotate(count=Count('id', distinct=True))
                 .values_list('genres', 'count')
             )
             lang_counts_map = dict(
-                base_language_counts.values('language')
-                .annotate(count=Count('id'))
+                base_language_counts.values_list('language_id', flat=False)
+                .annotate(count=Count('id', distinct=True))
                 .values_list('language', 'count')
             )
 
